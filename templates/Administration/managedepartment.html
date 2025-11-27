@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Department</title>
+</head>
+<body>
+<table border="1px">
+    <tr>
+        <th>SI NO</th>
+        <th>Department name</th>
+        <th>Address</th>
+        <th>Contact info</th>
+        <th><a href="/add-department">+</a></th>
+
+    </tr>
+    {% for i in val %}
+    <tr>
+        <td>{{ forloop.counter}}</td>
+        <td>{{ i.DepartmentName }}</td>
+        <td>{{ i.Address }}</td>
+        <td>{{ i.ContactInfo}}</td>
+        <td>
+        <a href="/DeleteDepartment/{{i.id}}">Delete</a>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+    
+</body>
+</html>

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Complaints</title>
+</head>
+<body>
+
+<h1>User Complaints</h1>
+
+<table border="1" cellpadding="5" cellspacing="0">
+    <tr>
+        <th>User Name</th>
+        <th>Email</th>
+        <th>Phone</th>
+        <th>Category</th>
+        <th>Description</th>
+        <th>Priority</th>
+        <th>Image</th>
+        <th>Location</th>
+        <th>Status</th>
+        <th>Submit Date</th>
+        <th>Deadline Date</th>
+        <th>Current status</th>
+        
+        
+    </tr>
+    {% for i in val %} 
+    <tr>
+        <td>{{ i.UserId.Name }}</td>
+        <td>{{ i.UserId.Email }}</td>
+        <td>{{ i.UserId.PhoneNo }}</td>
+        <td>{{ i.Category }}</td>
+        <td>{{ i.Description }}</td>
+        <td>{{ i.Priority }}</td>
+        <td><img src="{{ Image }}" alt="Image" width="100"></td>
+        <td>{{ i.Location }}</td>
+        <td>{{ i.Status }}</td>
+        <td>{{ i.SubmitDate }}</td>
+        <td>{{ i.DeadlineDate }}</td>
+        <td><a href="/updatestatus/{{ i.id }}">Update Status</a></td>
+    </tr>
+    {% endfor %}
+</table>
+
+<br>
+
+</body>
+</html>

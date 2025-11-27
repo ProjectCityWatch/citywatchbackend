@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View User Feedback</title>
+</head>
+<body>
+
+<h1>User Feedback Table</h1>
+
+<table border="1" cellpadding="8" cellspacing="0">
+    <tr>
+        <th>SI No</th>
+        <th>User Name</th>
+        <th>Complaint</th>
+        <th>Feedback</th>
+        <th>Date Submitted</th>
+        <th>Replay</th>
+    </tr>
+
+    {% for feedback in feedback %}
+    <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ feedback.UserId.Name }}</td>
+        <td>{{ feedback.ComplaintId.Description }}</td>
+        <td>{{ feedback.FeedbackText }}</td>
+        <td>{{ feedback.DateSubmitted }}</td>
+        <td> 
+            {% if feedback.Replay %}
+            {{feedback.Replay}}
+            {% else %}
+            <form action="/replay/{{feedback.id}}" method="post">
+                {% csrf_token %}
+                <input type="text" name="Replay">
+                <button>Reply</button>
+            </form>
+            {% endif %}
+        </td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="6">No feedbacks found.</td>
+    </tr>
+    {% endfor %}
+</table>
+
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assign works</title>
+</head>
+<body>
+    
+    <table border="1px">
+        <tr>
+            <th>User ID</th>
+            <th>Department ID</th>
+            <th>Category</th>
+            <th>Description</th>
+            <th>Priority</th>
+            <th>Image</th>
+            <th>Location</th>
+            <th>Date</th>
+            <th>Actions</th>
+        </tr>
+        {% for i in val %}
+        <tr>
+            <td>{{ i.UserId.Name }}</td>
+            <td>{{ i.DepartmentId.DepartmentName }}</td>
+            <td>{{ i.Category}}</td>
+            <td>{{ i.Description}}</td>
+            <td>{{ i.Priority}}</td>
+            <td>{{ i.Image}}</td>
+            <td>{{ i.Location}}</td>
+            <td>{{ i.DeadlineDate}}</td>
+            <td><a href="/submit-work/{{ i.id }}">Assign Work</a></td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

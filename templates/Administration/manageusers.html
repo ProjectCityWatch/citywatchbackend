@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage User</title>
+</head>
+<body>
+
+    <h2>Manage Users</h2>
+
+    <table border="1" cellpadding="10">
+        <tr>
+            <th>User ID</th>
+            <th>User Name</th>
+            <th>Phone Number</th>
+            <th>Email</th>
+            <th>Actions</th>
+        </tr>
+
+        {% for i in val %}
+        <tr>
+            <td>{{ i.id }}</td>
+            <td>{{ i.Name }}</td>
+            <td>{{ i.PhoneNo }}</td>
+            <td>{{ i.Email }}</td>
+            <td>
+            {% if i.LoginId.UserType == "user" %}
+                 <a href="/BlockUser/{{ i.LoginId.id }}">Block</a> |
+            {% elif i.LoginId.UserType == "Blocked" %}
+                 <a href="/UnblockUser/{{ i.LoginId.id }}">Unblock</a>
+            {% endif %}
+
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+</body>
+</html>

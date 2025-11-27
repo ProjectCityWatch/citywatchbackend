@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <table border="1px">
+        <tr>
+            <th>Complaint ID</th>
+            <th>User ID</th>
+            <th>Subject</th>
+            <th>Description</th>
+            <th>Deadline</th>
+            <th>Current status</th>
+        </tr>
+        {% for i in val %} 
+        <tr>
+            <td>{{ i.id }}</td>
+            <td>{{ i.UserId.Name }}</td>
+            <td>{{ i.Category }}</td>
+            <td>{{ i.Description }}</td>
+            <td>00-00-0000</td>
+            <td>{{ i.Status }}</td>
+            <td><a href="\updatestatus">Update Status</a></td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
