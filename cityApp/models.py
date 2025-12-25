@@ -13,7 +13,7 @@ class UserTable(models.Model):
     LoginId = models.ForeignKey(LoginTable, on_delete=models.CASCADE)
     Name = models.CharField(max_length=30, null=True, blank=True)
     PhoneNo = models.CharField(max_length=10, null=True, blank=True)
-    Email = models.CharField(max_length=30, null=True, blank=True)
+    Email = models.CharField(max_length=30, unique=True, null=True, blank=True)
 
 class DepartmentsTable(models.Model):
     DepartmentName = models.CharField(max_length=30, null=True, blank=True)

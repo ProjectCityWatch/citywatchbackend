@@ -10,7 +10,17 @@ class LoginSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserTable
-        fields = ["Name","PhoneNo", "Email",]
+        fields = ["Name", "PhoneNo", "Email", "LoginId"]
+        extra_kwargs = {
+            "LoginId": {"required": False}
+        }
+
+    def validate_Email(self, value):
+        if UserTable.objects.filter(Email=value).exists():
+            raise serializers.ValidationError("Email already registered")
+        return value
+
+
 class DepartmentsSerializer(serializers.ModelSerializer):
     class Meta:
         model = DepartmentsTable

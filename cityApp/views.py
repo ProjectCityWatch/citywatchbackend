@@ -182,13 +182,16 @@ class AuthorityProfileView(View):
 
 class UserRegistration(APIView):
     def post(self, request):
-        print("++++++++++++++",request.data)
+        print("++++++++++++++", request.data)
+
+        # LOGIN CREDENTIALS
         login_serial = LoginSerializer(data={
             "Username": request.data.get("Username"),
             "Password": request.data.get("Password"),
             "UserType": "USER"
         })
 
+        # USER BASIC DATA
         user_serial = UserSerializer(data=request.data)
 
         if login_serial.is_valid():
@@ -197,14 +200,23 @@ class UserRegistration(APIView):
             if user_serial.is_valid():
                 user_serial.save(LoginId=login_obj)
                 return Response(
-                    {"message": "User Registered Successfully", "user": user_serial.data},
+                    {"status": "success",
+                     "message": "User Registered Successfully",
+                     "user": user_serial.data},
                     status=status.HTTP_201_CREATED
                 )
-            
-            login_obj.delete()
-            return Response(user_serial.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(login_serial.errors, status=status.HTTP_400_BAD_REQUEST)
+            # delete login if user fails
+            login_obj.delete()
+            return Response(
+                {"status": "error", "errors": user_serial.errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response(
+            {"status": "error", "errors": login_serial.errors},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
 
 
@@ -214,17 +226,21 @@ class LoginAPI(APIView):
         password = request.data.get("Password")
 
         try:
-            login = LoginTable.objects.get(Username=username, Password=password)
-
-            return Response({
-                "message": "Login Successful",
-                "LoginId": login.id,
-                "UserType": login.UserType
-            }, status=status.HTTP_200_OK)
-
+            user = LoginTable.objects.get(Username=username)
         except LoginTable.DoesNotExist:
-            return Response( 
-                {"error": "Invalid Username or Password"},
-                status=status.HTTP_400_BAD_REQUEST
+            return Response(
+                {"status": "error", "message": "Invalid username or password"},
+                status=status.HTTP_401_UNAUTHORIZED
             )
+
+        if user.Password != password:
+            return Response(
+                {"status": "error", "message": "Invalid username or password"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        return Response(
+            {"status": "success", "message": "Login successful", "userId": user.id},
+            status=status.HTTP_200_OK
+        )
 
