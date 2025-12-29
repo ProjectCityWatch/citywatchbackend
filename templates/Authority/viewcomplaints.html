@@ -3,48 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Complaints</title>
+    <title>Update Complaint Status</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 10px;
+            border: 1px solid #000;
+            text-align: center;
+            vertical-align: top;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        iframe {
+            border: 0;
+        }
+
+        select, button {
+            padding: 5px;
+        }
+    </style>
 </head>
+
 <body>
 
-<h1>User Complaints</h1>
+<h2 align="center">Update Complaint Status</h2>
 
-<table border="1" cellpadding="5" cellspacing="0">
+<table>
     <tr>
-        <th>User Name</th>
-        <th>Email</th>
-        <th>Phone</th>
+        <th>User</th>
+        <th>Department</th>
         <th>Category</th>
         <th>Description</th>
         <th>Priority</th>
         <th>Image</th>
         <th>Location</th>
+        <th>Map View</th>
+        <th>Deadline</th>
         <th>Status</th>
-        <th>Submit Date</th>
-        <th>Deadline Date</th>
-        <th>Current status</th>
-        
-        
+        <th>Action</th>
     </tr>
-    {% for i in val %} 
+
+    {% for i in val %}
     <tr>
         <td>{{ i.UserId.Name }}</td>
-        <td>{{ i.UserId.Email }}</td>
-        <td>{{ i.UserId.PhoneNo }}</td>
+        <td>{{ i.DepartmentId.DepartmentName }}</td>
         <td>{{ i.Category }}</td>
         <td>{{ i.Description }}</td>
         <td>{{ i.Priority }}</td>
-        <td><img src="{{ Image }}" alt="Image" width="100"></td>
-        <td>{{ i.Location }}</td>
-        <td>{{ i.Status }}</td>
-        <td>{{ i.SubmitDate }}</td>
-        <td>{{ i.DeadlineDate }}</td>
-        <td><a href="/updatestatus/{{ i.id }}">Update Status</a></td>
+
+        <td>
+            {% if i.Image %}
+                <img src="{{ i.Image.url }}" width="100" height="80">
+            {% else %}
+                No Image
+            {% endif %}
+        </td>
+
+        <td>
+            {{ i.Latitude }}, {{ i.Longitude }} <br>
+            <a href="https://www.google.com/maps?q={{ i.Latitude }},{{ i.Longitude }}" target="_blank">
+                Open in Maps
+            </a>
+        </td>
+
+        <td>
+            <iframe
+                width="250"
+                height="180"
+                src="https://www.google.com/maps?q={{ i.Latitude }},{{ i.Longitude }}&output=embed">
+            </iframe>
+        </td>
+
+{% if not i.EndingDate and i.Status == 'Assigned' %}
+       <td>
+    <form method="post" action="{% url 'request_ending_date' %}">
+        {% csrf_token %}
+        <input type="hidden" name="complaint_id" value="{{ i.id }}">
+        <input type="date" name="date" required><br><br>
+        <input type="submit" value="Request">
+    </form>
+</td>
+{% else %}
+<td>
+    <span style="color: rgb(232, 16, 63); font-weight: bold;">{{ i.EndingDate }}</span>
+    <span style="color: rgb(232, 16, 63); font-weight: bold;"><a href="/updatedeadline/">Update</a></span>
+    
+        </td>
+{% endif %}
+
+
+<td>
+    {{ i.Status}}
+</td>
+ <td>
+                <form method="post" action="/UpdateStatus/{{ i.id }}">
+                    {% csrf_token %}
+                <select name="status">
+                    <option value="Pending" {% if i.work_status == "Pending" %}selected{% endif %}>Pending</option>
+                    <option value="In Progress" {% if i.work_status == "In Progress" %}selected{% endif %}>In Progress</option>
+                    <option value="Resolved" {% if i.work_status == "Resolved" %}selected{% endif %}>Resolved</option>
+                </select>
+           
+
+           
+                <input type="hidden" name="complaint_id" value="{{ i.id }}">
+                <button type="submit">Update Status</button>
+            </form>
     </tr>
     {% endfor %}
 </table>
-
-<br>
 
 </body>
 </html>

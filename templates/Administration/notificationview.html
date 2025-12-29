@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>View Notifications</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 8px;
+            border: 1px solid #000;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Notifications</h2>
+
+<table>
+    <tr>
+        <th>SI No</th>
+        <th>Complaint</th>
+        <th>Department</th>
+        <th>Status</th>
+        <th>Notification Message</th>
+        <th>Date</th>
+    </tr>
+
+    {% for n in notifications %}
+    <tr>
+        <td>{{ forloop.counter }}</td>
+
+        <!-- Complaint Description -->
+        <td>{{ n.Assignid.ComplaintId.Description }}</td>
+
+        <!-- Department Name -->
+        <td>{{ n.Assignid.ComplaintId.DepartmentId.DepartmentName }}</td>
+
+        <!-- Complaint Status -->
+        <td>{{ n.Assignid.Status }}</td>
+
+        <!-- Notification Message -->
+        <td>{{ n.Message }}</td>
+
+        <!-- Notification Date -->
+        <td>{{ n.Date }}</td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="6">No notifications available</td>
+    </tr>
+    {% endfor %}
+</table>
+
+</body>
+</html>

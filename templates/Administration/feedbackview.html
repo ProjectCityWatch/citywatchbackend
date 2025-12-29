@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>View User Feedback</title>
 </head>
 <body>
@@ -16,6 +15,8 @@
         <th>Complaint</th>
         <th>Feedback</th>
         <th>Date Submitted</th>
+        <th>Reply</th>
+        <th>Action</th>
     </tr>
 
     {% for feedback in feedbacks %}
@@ -25,7 +26,17 @@
         <td>{{ feedback.ComplaintId.Description }}</td>
         <td>{{ feedback.FeedbackText }}</td>
         <td>{{ feedback.DateSubmitted }}</td>
+        <td>{{ feedback.Replay }}</td>
         <td>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="feedback_id" value="{{ feedback.id }}">
+                <input type="text" name="reply"
+                       value="{{ feedback.Reply }}"
+                       placeholder="Type reply here"
+                       required>
+                <button type="submit">Send Reply</button>
+            </form>
         </td>
     </tr>
     {% empty %}

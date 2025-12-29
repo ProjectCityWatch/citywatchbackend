@@ -3,35 +3,150 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Assign works</title>
+    <title>Assign Works</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 10px;
+            border: 1px solid #000;
+            text-align: center;
+            vertical-align: top;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        iframe {
+            border: 0;
+        }
+
+        a {
+            text-decoration: none;
+            color: blue;
+            font-weight: bold;
+        }
+    </style>
 </head>
+
 <body>
-    
-    <table border="1px">
-        <tr>
-            <th>User ID</th>
-            <th>Department ID</th>
-            <th>Category</th>
-            <th>Description</th>
-            <th>Priority</th>
-            <th>Image</th>
-            <th>Location</th>
-            <th>Date</th>
-            <th>Actions</th>
-        </tr>
-        {% for i in val %}
-        <tr>
-            <td>{{ i.UserId.Name }}</td>
-            <td>{{ i.DepartmentId.DepartmentName }}</td>
-            <td>{{ i.Category}}</td>
-            <td>{{ i.Description}}</td>
-            <td>{{ i.Priority}}</td>
-            <td>{{ i.Image}}</td>
-            <td>{{ i.Location}}</td>
-            <td>{{ i.DeadlineDate}}</td>
-            <td><a href="/submit-work/{{ i.id }}">Assign Work</a></td>
-        </tr>
+
+<h2 align="center">Assign Works</h2>
+<form method="get" style="margin-bottom: 20px; text-align: center;">
+    <label>Department:</label>
+    <select name="department">
+        <option value="all">All</option>
+        {% for d in departments %}
+            <option value="{{ d.id }}"
+                {% if selected_department == d.id|stringformat:"s" %}selected{% endif %}>
+                {{ d.DepartmentName }}
+            </option>
         {% endfor %}
-    </table>
+    </select>
+
+    &nbsp;&nbsp;
+
+    <label>Status:</label>
+    <select name="status">
+        <option value="all">All</option>
+        <option value="assigned"
+            {% if selected_status == "assigned" %}selected{% endif %}>
+            Assigned
+        </option>
+        <option value="not_assigned"
+            {% if selected_status == "not_assigned" %}selected{% endif %}>
+            Not Assigned
+        </option>
+    </select>
+
+    &nbsp;&nbsp;
+
+    <button type="submit">Filter</button>
+</form>
+
+
+<table>
+    <tr>
+        <th>User</th>
+        <th>Department</th>
+        <th>Category</th>
+        <th>Description</th>
+        <th>Priority</th>
+        <th>Image</th>
+        <th>Location</th>
+        <th>Map View</th>
+        <th>Requested Date</th>
+        <th>Actions</th>
+    </tr>
+
+    {% for i in val %}
+<tr>
+<form method="post" action="{% url 'submit_work' i.id %}">
+{% csrf_token %}
+
+<td>{{ i.UserId.Name }}</td>
+<td>{{ i.DepartmentId.DepartmentName }}</td>
+<td>{{ i.Category }}</td>
+<td>{{ i.Description }}</td>
+<td>{{ i.Priority }}</td>
+
+<td>
+{% if i.Image %}
+<img src="{{ i.Image.url }}" width="100" height="80">
+{% else %}
+No Image
+{% endif %}
+</td>
+
+<td>
+{{ i.Latitude }}, {{ i.Longitude }} <br>
+<a href="https://www.google.com/maps?q={{ i.Latitude }},{{ i.Longitude }}" target="_blank">
+Open in Maps
+</a>
+</td>
+
+<td>
+<iframe width="250" height="180"
+src="https://www.google.com/maps?q={{ i.Latitude }},{{ i.Longitude }}&output=embed">
+</iframe>
+</td>
+
+<td>
+    {% if not i.EndingDate %}
+        <span style="color: rgb(232, 16, 63); font-weight: bold;">
+            Date not Assigned
+        </span>
+    {% else %}
+        {{ i.EndingDate }}
+    {% endif %}
+</td>
+<td>
+
+{% if i.Status == 'Assigned' %}
+    <span style="color: green; font-weight: bold;">Assigned</span>
+{% elif i.Status == 'Resolved' %}
+    <span style="color: rgb(75, 42, 137); font-weight: bold;">Resolved</span>
+
+{% else %}
+    <button type="submit">Assign Work</button>
+{% endif %}
+</td>
+
+
+</form>
+</tr>
+{% endfor %}
+
+</table>
+
 </body>
 </html>

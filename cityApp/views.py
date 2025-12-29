@@ -1,5 +1,5 @@
 from django.http import HttpResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 from rest_framework.views import APIView
 from rest_framework.views import Response
@@ -59,10 +59,77 @@ class AddDepartmentView(View):
         obj.save()
         return HttpResponse('''<script>alert('Department Added');window.location='/manage-department';</script>''')
 
-class AssignWorks(View):
+class   AssignWorks(View):
     def get(self, request):
-        obj = ComplaintsTable.objects.all()
-        return render(request, 'Administration/assignworks.html', {'val':obj})
+        complaints = ComplaintsTable.objects.all()
+        departments = DepartmentsTable.objects.all()
+
+        # assigned complaint IDs
+        assigned_ids = list(
+            AssignWork.objects.values_list('ComplaintId_id', flat=True)
+        )
+
+        # FILTERS
+        department_id = request.GET.get('department')
+        status = request.GET.get('status')
+
+        if department_id and department_id != "all":
+            complaints = complaints.filter(DepartmentId_id=department_id)
+
+        if status == "assigned":
+            complaints = complaints.filter(id__in=assigned_ids)
+        elif status == "not_assigned":
+            complaints = complaints.exclude(id__in=assigned_ids)
+        return render(
+            request,
+            'Administration/assignworks.html',
+            {
+                'val': complaints,
+                'departments': departments,
+                'assigned_ids': assigned_ids,
+                'selected_department': department_id,
+                'selected_status': status
+            }
+        )
+
+
+
+# class   AssignWorks(View):
+#     def get(self, request):
+#         complaints = ComplaintsTable.objects.all()
+#         departments = DepartmentsTable.objects.all()
+
+#         # assigned complaint IDs
+#         assigned_ids = list(
+#             AssignWork.objects.values_list('ComplaintId_id', flat=True)
+#         )
+
+#         # FILTERS
+#         department_id = request.GET.get('department')
+#         status = request.GET.get('status')
+
+#         if department_id and department_id != "all":
+#             complaints = complaints.filter(DepartmentId_id=department_id)
+
+#         if status == "assigned":
+#             complaints = complaints.filter(id__in=assigned_ids)
+#         elif status == "not_assigned":
+#             complaints = complaints.exclude(id__in=assigned_ids)
+
+#         return render(
+#             request,
+#             'Administration/assignworks.html',
+#             {
+#                 'val': complaints,
+#                 'departments': departments,
+#                 'assigned_ids': assigned_ids,
+#                 'selected_department': department_id,
+#                 'selected_status': status
+#             }
+#         )
+
+
+
 
 
 class DeleteDepartment(View):
@@ -110,19 +177,91 @@ class SendNotificationsView(View):
         return render(request, 'Administration/sendnotifications.html',{'val': obj})
 
 
-class SubmitWorkView(View): 
-    def get(self, request): return render(request, 'Administration/submitwork.html')
-    
+class SubmitWorkView(View):
+    def post(self, request, id):
+        complaint = ComplaintsTable.objects.get(id=id)
+        complaint.Status="Assigned"
+        complaint.save()
+
+        time_line_obj = TimeLineTable()
+        time_line_obj.ComplaintId = ComplaintsTable.objects.get(id=complaint.id)
+        time_line_obj.Status="Assigned"
+        time_line_obj.save()
+
+        return HttpResponse(
+            "<script>alert('Work Assigned Successfully');window.location='/assign-works/';</script>"
+        )
+# class SubmitWorkView(View):
+#     def post(self, request, id):
+#         assigned_date = request.POST.get('deadline')
+
+#         complaint = ComplaintsTable.objects.get(id=id)
+
+#         # prevent duplicate assignment
+#         if AssignWork.objects.filter(ComplaintId=complaint).exists():
+#             return HttpResponse(
+#                 "<script>alert('This complaint is already assigned');window.location='/assign-works/';</script>"
+#             )
+
+#         AssignWork.objects.create(
+#             ComplaintId=complaint,
+#             AssignedDate=assigned_date
+#         )
+
+#         return HttpResponse(
+#             "<script>alert('Work Assigned Successfully');window.location='/assign-works/';</script>"
+#         )
+
+class UpdateStatus(View):
+    def post(self, request, c_id):
+        complaint = ComplaintsTable.objects.get(id=c_id)
+        complaint.Status = request.POST['status']
+        complaint.save()
+        time_line_obj = TimeLineTable()
+        time_line_obj.ComplaintId = complaint
+        time_line_obj.Status = request.POST['status']
+        time_line_obj.save()
+        return HttpResponse(
+            "<script>alert('Status updated Successfully');window.location='/viewcomplaintsview/';</script>"
+        )
+        
+
+        
+
+
 class ViewComplaints(View):
     def get(self, request):
         obj =ComplaintsTable.objects.all()
         print(obj)
         return render(request, 'Administration/viewcomplaints.html', {'val':obj})
 
-class feedbackView(View):
+class ViewFeedback(View):
     def get(self, request):
         feedbacks = FeedbackTable.objects.all()
         return render(request, 'Administration/feedbackview.html', {'feedbacks': feedbacks})
+
+    def post(self, request):
+        feedback_id = request.POST.get('feedback_id')
+        reply_text = request.POST.get('reply')
+
+        feedback = FeedbackTable.objects.get(id=feedback_id)
+        feedback.Replay = reply_text
+        feedback.save()
+
+        return redirect('ViewFeedback')
+    
+class ViewNotification(View):
+    def get(self, request):
+        notifications = Notification.objects.select_related(
+            'Assignid__ComplaintId__DepartmentId'
+        ).order_by('-Date')
+
+        return render(
+            request,
+            'Administration/notificationview.html',
+            {'notifications': notifications}
+        )
+
 
 # ------------------------------ Authority ---------------------------------------
 class AuthorityHomeView(View):
@@ -144,6 +283,8 @@ class UpdateStatusView(View):
         status = request.POST['status']
         c.Status = status
         c.save()
+         
+       
         return HttpResponse('''<script>alert('Status changed successfully');window.location='/viewcomplaintsview';</script>''')
 
 class ViewFeedbackView(View):
@@ -162,9 +303,67 @@ class ReplayView(View):
 
 class ViewComplaintsView(View):
     def get(self, request):
-        obj =ComplaintsTable.objects.all()
-        print(obj)
-        return render(request, 'Authority/viewcomplaints.html', {'val':obj})
+        complaints = ComplaintsTable.objects.filter(DepartmentId__LoginId_id=request.session['loginid'])
+        return render(request, 'Authority/viewcomplaints.html', {'val': complaints})
+    
+# class ViewComplaintsView(View):
+#     def get(self, request):
+#         complaints = ComplaintsTable.objects.all()
+
+#         for c in complaints:
+#             try:
+#                 assign = AssignWork.objects.get(ComplaintId=c)
+#                 c.EndingDate = assign.EndingDate
+#                 c.work_status = assign.Status
+#             except AssignWork.DoesNotExist:
+#                 c.assigned_date = None
+#                 c.work_status = "Not Assigned"
+
+#         return render(request, 'Authority/viewcomplaints.html', {'val': complaints})
+    
+
+    def post(self, request):
+        complaint_id = request.POST.get('complaint_id')
+        status = request.POST.get('status')
+
+        assign = get_object_or_404(AssignWork, ComplaintId_id=complaint_id)
+
+        assign.Status = status
+        assign.save()
+
+        Notification.objects.create(
+            Assignid=assign,
+            Message=f"The assigned work status is {status}"
+        )
+
+        return HttpResponse(
+            "<script>alert('Status changed successfully');"
+            "window.location='/viewcomplaintsview';</script>"
+        )
+class request_ending_date(View):
+    def post(self,request):
+     if request.method == "POST":
+        complaint_id = request.POST.get("complaint_id")
+        print(complaint_id,'************')
+        ending_date = request.POST.get("date")
+        print(ending_date,'&&&&&&&&')
+
+        complaint = ComplaintsTable.objects.get(id=complaint_id)
+        complaint.EndingDate=ending_date
+        complaint.Status='Requested'
+        complaint.save()
+        time_line_obj=TimeLineTable()
+        time_line_obj.ComplaintId = ComplaintsTable.objects.get(id=complaint.id)
+        time_line_obj.Status = "Requested"
+        time_line_obj.save()
+
+        return HttpResponse(
+            "<script>alert('successfully Requested');"
+            "window.location='/viewcomplaintsview';</script>"
+        )
+    
+
+
     
 class AuthorityProfileView(View):
     def get(self, request):
@@ -176,7 +375,19 @@ class AuthorityProfileView(View):
         if profile.is_valid():
             profile.save()
         return HttpResponse('''<script>alert('Updated successfully');window.location='/authorityhome/';</script>''')
-    
+
+class UpdateDeadlineView(View):
+    def get(self, request):
+        return render(request, 'Authority/updatedeadline.html')
+
+    def post(self, request):
+        date = request.POST.get('date')
+        reason = request.POST.get('reason')
+
+        # later you can save to DB
+        print(date, reason)
+
+        return render(request, 'Authority/updatedeadline.html')  
 
 #############################################  API ###########################################
 
