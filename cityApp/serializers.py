@@ -7,6 +7,7 @@ class LoginSerializer(serializers.ModelSerializer):
     class Meta:
         model = LoginTable
         fields = ["Username","Password", "UserType"]
+        
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserTable
@@ -28,7 +29,7 @@ class DepartmentsSerializer(serializers.ModelSerializer):
 class ComplaintsSerializer(serializers.ModelSerializer):
     class Meta:
         model = ComplaintsTable
-        fields = '__all__'
+        fields = ['id','Category', 'Description', 'Priority', 'Image', 'Latitude' , 'Longitude','Status','SubmitDate']
 class FeedbackSerializer(serializers.ModelSerializer):
     class Meta:
         model = FeedbackTable
@@ -38,3 +39,11 @@ class NotificationSerializer(serializers.ModelSerializer):
         model = Notification
         fields = '__all__'        
 
+class TimeLineSerializer(serializers.ModelSerializer):
+    Description = serializers.CharField(source='ComplaintId.Description')
+    Category = serializers.CharField(source ='ComplaintId.Category' )
+    SubmitDate = serializers.DateTimeField(source ='ComplaintId.SubmitDate')
+    Image = serializers.FileField(source = 'ComplaintId.Image')
+    class Meta:
+        model = TimeLineTable
+        fields = ['Status','Remark','Date','Description','Category','SubmitDate','Image']

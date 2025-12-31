@@ -7,6 +7,7 @@ from rest_framework.views import status
 from cityApp.models import *
 from cityApp.form import *
 from cityApp.serializers import *
+from django.db.models import Exists, OuterRef, Subquery
 
 # --- Login ---
 class LoginView(View):
@@ -59,17 +60,28 @@ class AddDepartmentView(View):
         obj.save()
         return HttpResponse('''<script>alert('Department Added');window.location='/manage-department';</script>''')
 
-class   AssignWorks(View):
+class AssignWorks(View):
     def get(self, request):
-        complaints = ComplaintsTable.objects.all()
+        assign_date = AssignWork.objects.filter(
+            ComplaintId=OuterRef('pk')
+        ).values('EndingDate')[:1]
+
+        complaints = ComplaintsTable.objects.annotate(
+            final_deadline=Subquery(assign_date),
+            deadline_changed=Exists(
+                TimeLineTable.objects.filter(
+                    ComplaintId=OuterRef('pk'),
+                    Status="Requested"
+                )
+            )
+        )
+
         departments = DepartmentsTable.objects.all()
 
-        # assigned complaint IDs
         assigned_ids = list(
             AssignWork.objects.values_list('ComplaintId_id', flat=True)
         )
 
-        # FILTERS
         department_id = request.GET.get('department')
         status = request.GET.get('status')
 
@@ -80,6 +92,7 @@ class   AssignWorks(View):
             complaints = complaints.filter(id__in=assigned_ids)
         elif status == "not_assigned":
             complaints = complaints.exclude(id__in=assigned_ids)
+
         return render(
             request,
             'Administration/assignworks.html',
@@ -91,6 +104,7 @@ class   AssignWorks(View):
                 'selected_status': status
             }
         )
+
 
 
 
@@ -180,17 +194,34 @@ class SendNotificationsView(View):
 class SubmitWorkView(View):
     def post(self, request, id):
         complaint = ComplaintsTable.objects.get(id=id)
-        complaint.Status="Assigned"
+
+        # get requested date from complaint
+        requested_date = complaint.EndingDate
+
+        # create or update AssignWork
+        assign, created = AssignWork.objects.get_or_create(
+            ComplaintId=complaint
+        )
+        assign.EndingDate = requested_date
+        assign.Status = "Assigned"
+        assign.save()
+
+        # update complaint status
+        complaint.Status = "Assigned"
         complaint.save()
 
-        time_line_obj = TimeLineTable()
-        time_line_obj.ComplaintId = ComplaintsTable.objects.get(id=complaint.id)
-        time_line_obj.Status="Assigned"
-        time_line_obj.save()
+        # timeline entry
+        TimeLineTable.objects.create(
+            ComplaintId=complaint,
+            Status="Assigned",
+            Remark=f"Deadline confirmed as {requested_date}"
+        )
 
         return HttpResponse(
-            "<script>alert('Work Assigned Successfully');window.location='/assign-works/';</script>"
+            "<script>alert('Work Assigned Successfully');"
+            "window.location='/assign-works/';</script>"
         )
+
 # class SubmitWorkView(View):
 #     def post(self, request, id):
 #         assigned_date = request.POST.get('deadline')
@@ -212,21 +243,73 @@ class SubmitWorkView(View):
 #             "<script>alert('Work Assigned Successfully');window.location='/assign-works/';</script>"
 #         )
 
+# class UpdateStatus(View):
+#     def post(self, request, c_id):
+#         complaint = ComplaintsTable.objects.get(id=c_id)
+#         complaint.Status = request.POST['status']
+#         complaint.save()
+#         time_line_obj = TimeLineTable()
+#         time_line_obj.ComplaintId = complaint
+#         time_line_obj.Status = request.POST['status']
+#         time_line_obj.save()
+#         return HttpResponse(
+#             "<script>alert('Status updated Successfully');window.location='/viewcomplaintsview/';</script>"
+#         )
+        
+# class UpdateStatus(View):
+#     def post(self, request, c_id):
+#         status = request.POST.get('status')
+
+#         # update complaint status
+#         complaint = ComplaintsTable.objects.get(id=c_id)
+#         complaint.Status = status
+#         complaint.save(update_fields=['Status'])
+
+#         assign = AssignWork.objects.filter(ComplaintId__id = c_id).first()
+#         assign.Status = status
+#         assign.save(update_fields=['Status'])
+
+#         # update timeline if exists, else create
+#         TimeLineTable.objects.update_or_create(
+#             ComplaintId=complaint,
+#             defaults={
+#                 'Status': status
+#             }
+#         )
+
+#         return HttpResponse(
+#             "<script>alert('Status updated Successfully');"
+#             "window.location='/viewcomplaintsview/';</script>"
+#         )
+
+
 class UpdateStatus(View):
     def post(self, request, c_id):
-        complaint = ComplaintsTable.objects.get(id=c_id)
-        complaint.Status = request.POST['status']
-        complaint.save()
-        time_line_obj = TimeLineTable()
-        time_line_obj.ComplaintId = complaint
-        time_line_obj.Status = request.POST['status']
-        time_line_obj.save()
-        return HttpResponse(
-            "<script>alert('Status updated Successfully');window.location='/viewcomplaintsview/';</script>"
-        )
-        
+        status = request.POST.get('status')
 
-        
+        # 1️⃣ Update complaint status
+        complaint = ComplaintsTable.objects.get(id=c_id)
+        complaint.Status = status
+        complaint.save(update_fields=['Status'])
+
+        # 2️⃣ Update assigned work status (if exists)
+        assign = AssignWork.objects.filter(ComplaintId_id=c_id).first()
+        if assign:
+            assign.Status = status
+            assign.save(update_fields=['Status'])
+
+        # 3️⃣ ALWAYS create a new timeline entry (HISTORY)
+        TimeLineTable.objects.create(
+            ComplaintId=complaint,
+            Status=status
+        )
+
+        return HttpResponse(
+            "<script>alert('Status updated Successfully');"
+            "window.location='/viewcomplaintsview/';</script>"
+        )
+
+
 
 
 class ViewComplaints(View):
@@ -357,6 +440,10 @@ class request_ending_date(View):
         time_line_obj.Status = "Requested"
         time_line_obj.save()
 
+        # assign = AssignWork.objects.get(ComplaintId__id = complaint_id)
+        # assign.EndingDate = ending_date
+        # assign.save()
+
         return HttpResponse(
             "<script>alert('successfully Requested');"
             "window.location='/viewcomplaintsview';</script>"
@@ -377,17 +464,42 @@ class AuthorityProfileView(View):
         return HttpResponse('''<script>alert('Updated successfully');window.location='/authorityhome/';</script>''')
 
 class UpdateDeadlineView(View):
-    def get(self, request):
-        return render(request, 'Authority/updatedeadline.html')
+    def get(self, request, id):
+        c = ComplaintsTable.objects.get(id=id)
+        return render(request, 'Authority/updatedeadline.html',{'val':c})
 
-    def post(self, request):
-        date = request.POST.get('date')
-        reason = request.POST.get('reason')
 
-        # later you can save to DB
-        print(date, reason)
+    def post(self, request, id):
+        # existing complaint
+        c = ComplaintsTable.objects.get(id=id)
 
-        return render(request, 'Authority/updatedeadline.html')  
+        # assigned work (must exist)
+        v = AssignWork.objects.get(ComplaintId__id=c.id)
+
+        # form bound to complaint
+        d = ComplaintsForm(request.POST, instance=c)
+
+        if d.is_valid():
+            reg = d.save(commit=False)
+
+            # update ending date in AssignWork
+            v.EndingDate = reg.EndingDate
+            v.save(update_fields=['EndingDate'])
+
+            # save complaint
+            reg.save()
+
+            # 🔥 CREATE TIMELINE ENTRY ONLY IF EXTENDED
+            if reg.Status == "Extended":
+                TimeLineTable.objects.create(
+                    ComplaintId=c,
+                    Status="Extended",
+                    EndingDate=reg.EndingDate,
+                    Remark=request.POST.get('reason')
+                )
+
+            return redirect('/viewcomplaintsview/')
+
 
 #############################################  API ###########################################
 
@@ -454,4 +566,53 @@ class LoginAPI(APIView):
             {"status": "success", "message": "Login successful", "userId": user.id},
             status=status.HTTP_200_OK
         )
+    
+class SendComplaintAPI(APIView):
+    def post(self,request,id):
+        print(request.data)
+        user = UserTable.objects.get(LoginId__id=id)
+        serializer=ComplaintsSerializer(data=request.data)
+        anonymous = request.data.get('is_anonymous')
+        if anonymous == 'false':
+            anonymous=False
+        elif anonymous == 'false':
+            anonymous=False
+        if serializer.is_valid():
+            serializer.save(UserId=user, is_anonymous=anonymous)
+            return Response(serializer.data,status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+    def get(self, request, id):
+        user = UserTable.objects.get(LoginId_id=id) 
+        comp=ComplaintsTable.objects.filter(UserId_id=user)
+        serializer=ComplaintsSerializer(comp, many=True)
+        print("-------------------", serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+class ViewTimelineAPI(APIView):
+    def get(self, request, id):
+        print("------------------------>", id)
+        comp = ComplaintsTable.objects.get(id=id) 
+        TimeLine=TimeLineTable.objects.filter(ComplaintId_id=comp)
+        serializer=TimeLineSerializer(TimeLine, many=True)
+        print("------------------>", serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+class SendAck(APIView):
+    def post(self,request,id):
+        print(request.data)
+        user = UserTable.objects.get(LoginId__id=id)
+        user = ComplaintsTable.objects.get(LoginId__id=id)
+        serializer=ComplaintsSerializer(data=request.data)
+        anonymous = request.data.get('is_anonymous')
+        if anonymous == 'false':
+            anonymous=False
+        elif anonymous == 'false':
+            anonymous=False
+        if serializer.is_valid():
+            serializer.save(UserId=user, is_anonymous=anonymous)
+            return Response(serializer.data,status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 

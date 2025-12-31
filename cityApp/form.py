@@ -15,3 +15,8 @@ class ProfileForm(ModelForm):
     class Meta:
         model = DepartmentsTable
         fields = ['DepartmentName','HeadName', 'Address', 'ContactInfo', 'Email']
+
+class ComplaintsForm(ModelForm):
+    class Meta:
+        model = ComplaintsTable
+        fields = ['EndingDate']     

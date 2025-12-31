@@ -35,12 +35,24 @@
             color: blue;
             font-weight: bold;
         }
+
+        .changed {
+            color: orange;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .not-assigned {
+            color: rgb(232, 16, 63);
+            font-weight: bold;
+        }
     </style>
 </head>
 
 <body>
 
 <h2 align="center">Assign Works</h2>
+
 <form method="get" style="margin-bottom: 20px; text-align: center;">
     <label>Department:</label>
     <select name="department">
@@ -73,7 +85,6 @@
     <button type="submit">Filter</button>
 </form>
 
-
 <table>
     <tr>
         <th>User</th>
@@ -89,38 +100,39 @@
     </tr>
 
     {% for i in val %}
-<tr>
-<form method="post" action="{% url 'submit_work' i.id %}">
-{% csrf_token %}
+    <tr>
+        <form method="post" action="{% url 'submit_work' i.id %}">
+            {% csrf_token %}
 
-<td>{{ i.UserId.Name }}</td>
-<td>{{ i.DepartmentId.DepartmentName }}</td>
-<td>{{ i.Category }}</td>
-<td>{{ i.Description }}</td>
-<td>{{ i.Priority }}</td>
+            <td>{{ i.UserId.Name }}</td>
+            <td>{{ i.DepartmentId.DepartmentName }}</td>
+            <td>{{ i.Category }}</td>
+            <td>{{ i.Description }}</td>
+            <td>{{ i.Priority }}</td>
 
-<td>
-{% if i.Image %}
-<img src="{{ i.Image.url }}" width="100" height="80">
-{% else %}
-No Image
-{% endif %}
-</td>
+            <td>
+                {% if i.Image %}
+                    <img src="{{ i.Image.url }}" width="100" height="80">
+                {% else %}
+                    No Image
+                {% endif %}
+            </td>
 
-<td>
-{{ i.Latitude }}, {{ i.Longitude }} <br>
-<a href="https://www.google.com/maps?q={{ i.Latitude }},{{ i.Longitude }}" target="_blank">
-Open in Maps
-</a>
-</td>
+            <td>
+                {{ i.Latitude }}, {{ i.Longitude }} <br>
+                <a href="https://www.google.com/maps?q={{ i.Latitude }},{{ i.Longitude }}" target="_blank">
+                    Open in Maps
+                </a>
+            </td>
 
-<td>
-<iframe width="250" height="180"
-src="https://www.google.com/maps?q={{ i.Latitude }},{{ i.Longitude }}&output=embed">
-</iframe>
-</td>
+            <td>
+                <iframe width="250" height="180"
+                        src="https://www.google.com/maps?q={{ i.Latitude }},{{ i.Longitude }}&output=embed">
+                </iframe>
+            </td>
 
-<td>
+            <!-- 🔥 REQUESTED DATE COLUMN (FULL & FINAL) -->
+           <td>
     {% if not i.EndingDate %}
         <span style="color: rgb(232, 16, 63); font-weight: bold;">
             Date not Assigned
@@ -129,23 +141,23 @@ src="https://www.google.com/maps?q={{ i.Latitude }},{{ i.Longitude }}&output=emb
         {{ i.EndingDate }}
     {% endif %}
 </td>
-<td>
-
-{% if i.Status == 'Assigned' %}
-    <span style="color: green; font-weight: bold;">Assigned</span>
-{% elif i.Status == 'Resolved' %}
-    <span style="color: rgb(75, 42, 137); font-weight: bold;">Resolved</span>
-
-{% else %}
-    <button type="submit">Assign Work</button>
-{% endif %}
-</td>
 
 
-</form>
-</tr>
-{% endfor %}
+            <td>
+                {% if i.Status == 'Assigned' %}
+                    <span style="color: green; font-weight: bold;">Assigned</span>
+                {% elif i.Status == 'In Progress' %}
+                    <span style="color: rgb(134, 154, 46); font-weight: bold;">In Progress</span>
+                {% elif i.Status == 'Resolved' %}
+                    <span style="color: rgb(75, 42, 137); font-weight: bold;">Resolved</span>
+                {% else %}
+                    <button type="submit">Assign Work</button>
+                {% endif %}
+            </td>
 
+        </form>
+    </tr>
+    {% endfor %}
 </table>
 
 </body>

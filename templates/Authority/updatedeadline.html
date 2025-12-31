@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Date & Reason Form</title>
+
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -66,19 +67,26 @@
 </head>
 <body>
 
-    <div class="form-container">
-        <h2>Submit Details</h2>
+<div class="form-container">
+    <h2>Submit Details</h2>
 
-        <form method="post">
-            <label for="date">Select Date</label>
-            <input type="date" id="date" name="date" required>
+    <!-- 🔴 FULL FORM -->
+    <form method="post" action="">
+        {% csrf_token %}
 
-            <label for="reason">Reason</label>
-            <textarea id="reason" name="reason" placeholder="Enter your reason here..." required></textarea>
+        <!-- 🔥 THIS IS THE IMPORTANT LINE -->
+        <!-- This tells Django WHICH complaint to update -->
 
-            <button type="submit">Submit</button>
-        </form>
-    </div>
+        <label for="date">Select Date</label>
+        <input type="date" id="date" name="EndingDate" required>
+
+        <label for="reason">Reason</label>
+        <textarea id="reason" name="reason"
+                  placeholder="Enter your reason here..." ></textarea>
+
+        <button type="submit">Submit</button>
+    </form>
+</div>
 
 </body>
 </html>

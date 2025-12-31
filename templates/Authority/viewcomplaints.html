@@ -98,7 +98,9 @@
 {% else %}
 <td>
     <span style="color: rgb(232, 16, 63); font-weight: bold;">{{ i.EndingDate }}</span>
-    <span style="color: rgb(232, 16, 63); font-weight: bold;"><a href="/updatedeadline/">Update</a></span>
+    {% if i.Status == 'Extended' %}
+    <span style="color: rgb(232, 16, 63); font-weight: bold;"><a href="/updatedeadline/{{i.id}}">Update</a></span>
+    {% endif %}
     
         </td>
 {% endif %}
@@ -111,9 +113,10 @@
                 <form method="post" action="/UpdateStatus/{{ i.id }}">
                     {% csrf_token %}
                 <select name="status">
-                    <option value="Pending" {% if i.work_status == "Pending" %}selected{% endif %}>Pending</option>
-                    <option value="In Progress" {% if i.work_status == "In Progress" %}selected{% endif %}>In Progress</option>
-                    <option value="Resolved" {% if i.work_status == "Resolved" %}selected{% endif %}>Resolved</option>
+                    <option value="Pending" {% if i.Status == "Pending" %}selected{% endif %}>Pending</option>
+                    <option value="In Progress" {% if i.Status == "In Progress" %}selected{% endif %}>In Progress</option>
+                    <option value="Resolved" {% if i.Status == "Resolved" %}selected{% endif %}>Resolved</option>
+                    <option value="Extended" {% if i.Status == "Extended" %}selected{% endif %}>Extended</option>
                 </select>
            
 

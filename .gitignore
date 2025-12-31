@@ -1,13 +1,18 @@
-# Python cache
+# Python
 __pycache__/
 *.pyc
 
-# Django database
+# Django
 db.sqlite3
+media/
 
 # Virtual environment
 env/
 venv/
+
+# Images
+*.jpg
+*.png
 
 # IDE
 .vscode/

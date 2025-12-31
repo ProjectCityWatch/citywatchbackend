@@ -25,7 +25,7 @@ class DepartmentsTable(models.Model):
 
 class ComplaintsTable(models.Model):
     UserId = models.ForeignKey(UserTable, on_delete=models.CASCADE)
-    DepartmentId = models.ForeignKey(DepartmentsTable, on_delete=models.CASCADE)
+    DepartmentId = models.ForeignKey(DepartmentsTable, on_delete=models.CASCADE, null=True, blank=True)
     Category = models.CharField(max_length=30, null=True, blank=True)
     Description = models.CharField(max_length=100, null=True, blank=True)
     Priority = models.CharField(max_length=30, null=True, blank=True)
@@ -40,8 +40,8 @@ class ComplaintsTable(models.Model):
         null=True, blank=True
     )
 
-    Status = models.CharField(max_length=30, null=True, blank=True)
     SubmitDate = models.DateTimeField(auto_now_add=True)
+    is_anonymous = models.BooleanField(null=True, blank=True)
 
 class TimeLineTable(models.Model):
     ComplaintId = models.ForeignKey(
@@ -51,6 +51,7 @@ class TimeLineTable(models.Model):
     Status = models.CharField(max_length=30)
     Remark = models.CharField(max_length=255, null=True, blank=True)
     Date = models.DateTimeField(default=timezone.now)
+    EndingDate = models.DateField(null=True, blank=True)
 
 class FeedbackTable(models.Model):
     UserId = models.ForeignKey(UserTable, on_delete=models.CASCADE)
@@ -63,6 +64,8 @@ class AssignWork(models.Model):
     ComplaintId = models.ForeignKey(ComplaintsTable, on_delete=models.CASCADE)
     EndingDate=models.DateField(null=True,blank=True)
     Status = models.CharField(max_length=30, default="pending")
+    
+    
 
 class Notification(models.Model):
     Assignid=models.ForeignKey(AssignWork,on_delete=models.CASCADE,null=True,blank=True)
