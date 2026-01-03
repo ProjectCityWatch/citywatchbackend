@@ -44,6 +44,9 @@ urlpatterns = [
     path('User', UserRegistration.as_view(), name='register'),
     path('send-complaint/<int:id>/',SendComplaintAPI.as_view(),name='send_complaint'),
     path('view-timeline/<int:id>', ViewTimelineAPI.as_view(), name='view-timeline'),
-
+    path('SendAck/<int:id>', SendAck.as_view(), name='SendAck'),
+    path('view-allcomplaints',ViewAllcomplaintsAPI.as_view(),name='view-allcomplaints'),
+    path('ComplaintLikeAPI/<int:lid>',ComplaintLikeAPI.as_view(),name='ComplaintLikeAPI'),
+    path('ComplaintCommentAPI/<int:lid>',ComplaintCommentAPI.as_view(),name='ComplaintCommentAPI'),
 
 ]

@@ -72,6 +72,31 @@ class Notification(models.Model):
     Message=models.CharField(max_length=100, null=True, blank=True)
     Date = models.DateTimeField(auto_now_add=True)
 
+class ComplaintLike(models.Model):
+    ComplaintId = models.ForeignKey(ComplaintsTable,on_delete=models.CASCADE, related_name="likes")
+    UserId = models.ForeignKey(UserTable,on_delete=models.CASCADE)
+    LikedAt = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        unique_together = ("ComplaintId", "UserId")  # 🚫 prevents double-like
+
+class ComplaintComment(models.Model):
+    ComplaintId = models.ForeignKey(ComplaintsTable,on_delete=models.CASCADE,related_name="comments")
+    UserId = models.ForeignKey(UserTable,on_delete=models.CASCADE)
+    CommentText = models.TextField()
+    CreatedAt = models.DateTimeField(auto_now_add=True)
+
+class PointsTable(models.Model):
+    ComplaintId = models.ForeignKey(ComplaintsTable,on_delete=models.CASCADE)
+    Points = models.IntegerField()
+    CreatedDate = models.DateTimeField(auto_now_add=True)
+
+class BadgeTable(models.Model):
+    ComplaintId = models.ForeignKey(ComplaintsTable,on_delete=models.CASCADE)
+    Badge = models.CharField(max_length=20)
+    CreatedDate = models.DateTimeField(auto_now_add=True)
+
+
+
 
 
 

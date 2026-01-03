@@ -26,10 +26,20 @@ class DepartmentsSerializer(serializers.ModelSerializer):
     class Meta:
         model = DepartmentsTable
         fields = '__all__'
+
+
 class ComplaintsSerializer(serializers.ModelSerializer):
+    Name = serializers.CharField(source='UserId.Name')
     class Meta:
         model = ComplaintsTable
-        fields = ['id','Category', 'Description', 'Priority', 'Image', 'Latitude' , 'Longitude','Status','SubmitDate']
+        fields = ['id','Category', 'Description', 'Priority', 'Image', 'Latitude' , 'Longitude','Status','SubmitDate','Description', 'Name']
+
+class AddComplaintsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ComplaintsTable
+        fields = ['Category', 'Description', 'Priority', 'Image', 'Latitude' , 'Longitude','SubmitDate']
+
+        
 class FeedbackSerializer(serializers.ModelSerializer):
     class Meta:
         model = FeedbackTable

@@ -289,8 +289,22 @@ class UpdateStatus(View):
 
         # 1️⃣ Update complaint status
         complaint = ComplaintsTable.objects.get(id=c_id)
+        user_id=complaint.UserId.id
+    
         complaint.Status = status
         complaint.save(update_fields=['Status'])
+   
+        if status == "Resolved":
+            Point_obj = PointsTable.objects.get(ComplaintId_id=complaint.id)
+            point = Point_obj.Points
+            Point_obj.Points = 200 + point
+            Point_obj.save()
+            obj = BadgeTable.objects.filter(ComplaintId__UserId_id=user_id, ComplaintId__Status="Resolved")
+            if len(obj)==1:
+                Badge_obj = BadgeTable()
+                Badge_obj.ComplaintId = complaint
+                Badge_obj.Badge = 'First Problem Resolved'
+                Badge_obj.save()
 
         # 2️⃣ Update assigned work status (if exists)
         assign = AssignWork.objects.filter(ComplaintId_id=c_id).first()
@@ -303,7 +317,6 @@ class UpdateStatus(View):
             ComplaintId=complaint,
             Status=status
         )
-
         return HttpResponse(
             "<script>alert('Status updated Successfully');"
             "window.location='/viewcomplaintsview/';</script>"
@@ -386,7 +399,9 @@ class ReplayView(View):
 
 class ViewComplaintsView(View):
     def get(self, request):
+        print(request.session['loginid'])
         complaints = ComplaintsTable.objects.filter(DepartmentId__LoginId_id=request.session['loginid'])
+        print("-----------",complaints)
         return render(request, 'Authority/viewcomplaints.html', {'val': complaints})
     
 # class ViewComplaintsView(View):
@@ -433,11 +448,11 @@ class request_ending_date(View):
 
         complaint = ComplaintsTable.objects.get(id=complaint_id)
         complaint.EndingDate=ending_date
-        complaint.Status='Requested'
+        complaint.Status='Date Fixed'
         complaint.save()
         time_line_obj=TimeLineTable()
         time_line_obj.ComplaintId = ComplaintsTable.objects.get(id=complaint.id)
-        time_line_obj.Status = "Requested"
+        time_line_obj.Status = "Date Fixed"
         time_line_obj.save()
 
         # assign = AssignWork.objects.get(ComplaintId__id = complaint_id)
@@ -571,48 +586,157 @@ class SendComplaintAPI(APIView):
     def post(self,request,id):
         print(request.data)
         user = UserTable.objects.get(LoginId__id=id)
-        serializer=ComplaintsSerializer(data=request.data)
+        serializer=AddComplaintsSerializer(data=request.data)
         anonymous = request.data.get('is_anonymous')
         if anonymous == 'false':
             anonymous=False
-        elif anonymous == 'false':
-            anonymous=False
-        if serializer.is_valid():
-            serializer.save(UserId=user, is_anonymous=anonymous)
-            return Response(serializer.data,status=status.HTTP_201_CREATED)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
+        elif anonymous == 'true':
+            anonymous=True
+        c_obj = ComplaintsTable.objects.filter(UserId__LoginId_id=id) 
+        print("***********************",c_obj) 
+        if len(c_obj) == 0:   
+            if serializer.is_valid():
+                c=serializer.save(UserId=user, is_anonymous=anonymous)
+                Point_obj = PointsTable()
+                Point_obj.ComplaintId = c
+                Point_obj.Points = 200
+                Point_obj.save()
+                Badge_obj = BadgeTable()
+                Badge_obj.ComplaintId = c
+                Badge_obj.Badge = 'First Report'
+                Badge_obj.save()
+                TimeLineTable.objects.create(ComplaintId=c, Status='Pending')
+                
+                return Response(serializer.data,status=status.HTTP_201_CREATED)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        else:    
+            if serializer.is_valid():
+                c=serializer.save(UserId=user, is_anonymous=anonymous)
+                Point_obj = PointsTable()
+                Point_obj.ComplaintId = c
+                Point_obj.Points = 50
+                Point_obj.save()
+                TimeLineTable.objects.create(ComplaintId=c, Status='Pending')
+
+                return Response(serializer.data,status=status.HTTP_201_CREATED)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
     def get(self, request, id):
         user = UserTable.objects.get(LoginId_id=id) 
         comp=ComplaintsTable.objects.filter(UserId_id=user)
         serializer=ComplaintsSerializer(comp, many=True)
         print("-------------------", serializer.data)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
 
 class ViewTimelineAPI(APIView):
     def get(self, request, id):
         print("------------------------>", id)
         comp = ComplaintsTable.objects.get(id=id) 
+        print("++++++++++++++++",comp)
         TimeLine=TimeLineTable.objects.filter(ComplaintId_id=comp)
+        print(TimeLine)
         serializer=TimeLineSerializer(TimeLine, many=True)
         print("------------------>", serializer.data)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        if serializer.data:
+         
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.data, status=status.HTTP_204_NO_CONTENT)
+            
+    
 class SendAck(APIView):
     def post(self,request,id):
         print(request.data)
-        user = UserTable.objects.get(LoginId__id=id)
-        user = ComplaintsTable.objects.get(LoginId__id=id)
-        serializer=ComplaintsSerializer(data=request.data)
-        anonymous = request.data.get('is_anonymous')
-        if anonymous == 'false':
-            anonymous=False
-        elif anonymous == 'false':
-            anonymous=False
-        if serializer.is_valid():
-            serializer.save(UserId=user, is_anonymous=anonymous)
-            return Response(serializer.data,status=status.HTTP_201_CREATED)
+        complaint = ComplaintsTable.objects.get(id=id)
+        complaint.Status = "ACK"
+        complaint.save()
+        time_line_obj = TimeLineTable()
+        time_line_obj.Status = "ACK"
+        time_line_obj.ComplaintId=complaint
+        time_line_obj.save()
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+
+class ViewAllcomplaintsAPI(APIView):
+    def get(self, request):
+        print("------------------------>", id)
+        comp = ComplaintsTable.objects.all() 
+        serializer=ComplaintsSerializer(comp, many=True)
+        print("------------------>", serializer.data)
+        if serializer.data:
+         
+            return Response(serializer.data, status=status.HTTP_200_OK)
         else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+           
+            return Response(serializer.data, status=status.HTTP_204_NO_CONTENT)
 
+class ComplaintLikeAPI(APIView):
+    def post(self, request, lid):
+        try:
+            user = UserTable.objects.get(LoginId_id=lid)
+            complaint = ComplaintsTable.objects.get(id=request.data.get('ComplaintId'))
+        except (UserTable.DoesNotExist, ComplaintsTable.DoesNotExist):
+            return Response(
+                {"status": "error", "message": "Invalid data"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
+        like_obj = ComplaintLike.objects.filter(
+            ComplaintId=complaint,
+            UserId=user
+        )
+
+        # TOGGLE LIKE
+        if like_obj.exists():
+            like_obj.delete()
+            return Response(
+                {"status": "unliked"},
+                status=status.HTTP_200_OK
+            )
+        else:
+            ComplaintLike.objects.create(ComplaintId=complaint,UserId=user)
+            
+            return Response(
+                {"status": "liked"},
+                status=status.HTTP_200_OK)
+        
+class ComplaintCommentAPI(APIView):
+    def post(self, request, lid):
+        comp_id = request.data.get("comp_id")
+        comment_text = request.data.get("comment")
+
+        if not comment_text:
+            return Response(
+                {"status": "error", "message": "Comment is empty"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            user = UserTable.objects.get(LoginId_id=lid)
+            complaint = ComplaintsTable.objects.get(id=comp_id)
+        except (UserTable.DoesNotExist, ComplaintsTable.DoesNotExist):
+            return Response(
+                {"status": "error", "message": "Invalid data"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        comment = ComplaintComment.objects.create(
+            ComplaintId=complaint,
+            UserId=user,
+            CommentText=comment_text
+        )
+
+        return Response(
+            {
+                "status": "success",
+                "comment": {
+                    "text": comment.CommentText,
+                    "user": user.Name,
+                    "created_at": comment.CreatedAt
+                }
+            },
+            status=status.HTTP_201_CREATED
+        )
