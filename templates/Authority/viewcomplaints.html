@@ -6,55 +6,180 @@
     <title>Update Complaint Status</title>
 
     <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Inter", "Segoe UI", Arial, sans-serif;
+        }
+
         body {
-            font-family: Arial, sans-serif;
+            background: #020617;
+            color: #e5e7eb;
+            padding: 30px;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 26px;
+            font-weight: 600;
+        }
+
+        /* WRAPPER */
+        .table-wrapper {
+            background: #020617;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            overflow-x: auto;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
+            min-width: 1400px;
         }
 
-        th, td {
-            padding: 10px;
-            border: 1px solid #000;
-            text-align: center;
-            vertical-align: top;
+        thead {
+            background: #020617;
+            border-bottom: 2px solid #334155;
         }
 
         th {
-            background-color: #f2f2f2;
+            padding: 14px;
+            font-size: 14px;
+            color: #93c5fd;
+            text-align: center;
+            border-right: 1px solid #1e293b;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 14px;
+            font-size: 14px;
+            text-align: center;
+            vertical-align: top;
+            border-right: 1px solid #1e293b;
+        }
+
+        /* Alternate rows */
+        tbody tr:nth-child(even) {
+            background: #020617;
+        }
+
+        tbody tr:nth-child(odd) {
+            background: #0b1220;
+        }
+
+        tbody tr:hover {
+            background: #0f172a;
+        }
+
+        /* Description */
+        td:nth-child(4) {
+            text-align: left;
+            line-height: 1.6;
+        }
+
+        /* IMAGE */
+        img {
+            border-radius: 6px;
+            border: 1px solid #334155;
         }
 
         iframe {
-            border: 0;
+            border-radius: 6px;
+            border: 1px solid #334155;
         }
 
-        select, button {
-            padding: 5px;
+        /* LINKS */
+        a {
+            color: #60a5fa;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* STATUS BADGES */
+        .status {
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .Pending { background: #7c2d12; color: #fed7aa; }
+        .InProgress { background: #1e3a8a; color: #bfdbfe; }
+        .Resolved { background: #14532d; color: #bbf7d0; }
+        .Extended { background: #7c2d12; color: #fde68a; }
+
+        /* DEADLINE */
+        .deadline {
+            color: #fb7185;
+            font-weight: 600;
+        }
+
+        /* FORMS */
+        select, input[type="date"] {
+            width: 100%;
+            padding: 6px;
+            border-radius: 6px;
+            background: #020617;
+            border: 1px solid #334155;
+            color: #e5e7eb;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+
+        button, input[type="submit"] {
+            width: 100%;
+            padding: 7px;
+            border-radius: 6px;
+            background: #2563eb;
+            color: white;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover, input[type="submit"]:hover {
+            background: #1d4ed8;
+        }
+
+        /* ACTION CELL */
+        td:last-child {
+            background: #020617;
         }
     </style>
 </head>
 
 <body>
 
-<h2 align="center">Update Complaint Status</h2>
+<h2>Update Complaint Status</h2>
 
+<div class="table-wrapper">
 <table>
-    <tr>
-        <th>User</th>
-        <th>Department</th>
-        <th>Category</th>
-        <th>Description</th>
-        <th>Priority</th>
-        <th>Image</th>
-        <th>Location</th>
-        <th>Map View</th>
-        <th>Deadline</th>
-        <th>Status</th>
-        <th>Action</th>
-    </tr>
+    <thead>
+        <tr>
+            <th>User</th>
+            <th>Department</th>
+            <th>Category</th>
+            <th>Description</th>
+            <th>Priority</th>
+            <th>Image</th>
+            <th>Location</th>
+            <th>Map</th>
+            <th>Deadline</th>
+            <th>Status</th>
+            <th>Action</th>
+        </tr>
+    </thead>
 
+    <tbody>
     {% for i in val %}
     <tr>
         <td>{{ i.UserId.Name }}</td>
@@ -66,67 +191,62 @@
         <td>
             {% if i.Image %}
                 <img src="{{ i.Image.url }}" width="100" height="80">
-            {% else %}
-                No Image
-            {% endif %}
+            {% else %} No Image {% endif %}
         </td>
 
         <td>
             {{ i.Latitude }}, {{ i.Longitude }} <br>
-            <a href="https://www.google.com/maps?q={{ i.Latitude }},{{ i.Longitude }}" target="_blank">
-                Open in Maps
-            </a>
+            <a href="https://www.google.com/maps?q={{ i.Latitude }},{{ i.Longitude }}" target="_blank">Open</a>
         </td>
 
         <td>
-            <iframe
-                width="250"
-                height="180"
+            <iframe width="230" height="160"
                 src="https://www.google.com/maps?q={{ i.Latitude }},{{ i.Longitude }}&output=embed">
             </iframe>
         </td>
 
 {% if not i.EndingDate and i.Status == 'Assigned' %}
-       <td>
-    <form method="post" action="{% url 'request_ending_date' %}">
-        {% csrf_token %}
-        <input type="hidden" name="complaint_id" value="{{ i.id }}">
-        <input type="date" name="date" required><br><br>
-        <input type="submit" value="Request">
-    </form>
-</td>
+        <td>
+            <form method="post" action="{% url 'request_ending_date' %}">
+                {% csrf_token %}
+                <input type="hidden" name="complaint_id" value="{{ i.id }}">
+                <input type="date" name="date" required>
+                <input type="submit" value="Request">
+            </form>
+        </td>
 {% else %}
-<td>
-    <span style="color: rgb(232, 16, 63); font-weight: bold;">{{ i.EndingDate }}</span>
-    {% if i.Status == 'Extended' %}
-    <span style="color: rgb(232, 16, 63); font-weight: bold;"><a href="/updatedeadline/{{i.id}}">Update</a></span>
-    {% endif %}
-    
+        <td>
+            <div class="deadline">{{ i.EndingDate }}</div>
+            {% if i.Status == 'Extended' %}
+                <a href="/updatedeadline/{{i.id}}">Update</a>
+            {% endif %}
         </td>
 {% endif %}
 
+        <td>
+            <span class="status {{ i.Status|cut:' ' }}">
+                {{ i.Status }}
+            </span>
+        </td>
 
-<td>
-    {{ i.Status}}
-</td>
- <td>
-                <form method="post" action="/UpdateStatus/{{ i.id }}">
-                    {% csrf_token %}
+        <td>
+            <form method="post" action="/UpdateStatus/{{ i.id }}">
+                {% csrf_token %}
                 <select name="status">
                     <option value="Pending" {% if i.Status == "Pending" %}selected{% endif %}>Pending</option>
                     <option value="In Progress" {% if i.Status == "In Progress" %}selected{% endif %}>In Progress</option>
                     <option value="Resolved" {% if i.Status == "Resolved" %}selected{% endif %}>Resolved</option>
                     <option value="Extended" {% if i.Status == "Extended" %}selected{% endif %}>Extended</option>
                 </select>
-           
-
-           
                 <input type="hidden" name="complaint_id" value="{{ i.id }}">
-                <button type="submit">Update Status</button>
+                <button type="submit">Update</button>
             </form>
+        </td>
     </tr>
     {% endfor %}
+    </tbody>
 </table>
+</div>
 
 </body>
 </html>

@@ -14,6 +14,8 @@ class UserTable(models.Model):
     Name = models.CharField(max_length=30, null=True, blank=True)
     PhoneNo = models.CharField(max_length=10, null=True, blank=True)
     Email = models.CharField(max_length=30, unique=True, null=True, blank=True)
+    warnings = models.IntegerField(default=0)
+    total_points = models.IntegerField(default=0)
 
 class DepartmentsTable(models.Model):
     DepartmentName = models.CharField(max_length=30, null=True, blank=True)
@@ -55,7 +57,6 @@ class TimeLineTable(models.Model):
 
 class FeedbackTable(models.Model):
     UserId = models.ForeignKey(UserTable, on_delete=models.CASCADE)
-    ComplaintId = models.ForeignKey(ComplaintsTable, on_delete=models.CASCADE)
     FeedbackText = models.TextField(default="No feedback provided")  
     DateSubmitted = models.DateField(default=timezone.now)
     Replay = models.TextField(null=True, blank=True)
@@ -63,13 +64,10 @@ class FeedbackTable(models.Model):
 class AssignWork(models.Model):
     ComplaintId = models.ForeignKey(ComplaintsTable, on_delete=models.CASCADE)
     EndingDate=models.DateField(null=True,blank=True)
-    Status = models.CharField(max_length=30, default="pending")
-    
-    
+    Status = models.CharField(max_length=30, default="pending")  
 
 class Notification(models.Model):
-    Assignid=models.ForeignKey(AssignWork,on_delete=models.CASCADE,null=True,blank=True)
-    Message=models.CharField(max_length=100, null=True, blank=True)
+    ComplaintsId=models.ForeignKey(ComplaintsTable,on_delete=models.CASCADE,null=True,blank=True)
     Date = models.DateTimeField(auto_now_add=True)
 
 class ComplaintLike(models.Model):

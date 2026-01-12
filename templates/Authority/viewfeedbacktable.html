@@ -4,21 +4,160 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>View User Feedback</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Inter", "Segoe UI", Arial, sans-serif;
+        }
+
+        body {
+            background: #020617;
+            color: #e5e7eb;
+            padding: 30px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 26px;
+            font-weight: 600;
+        }
+
+        /* TABLE WRAPPER */
+        .table-wrapper {
+            border: 1px solid #1e293b;
+            border-radius: 14px;
+            overflow-x: auto;
+            background: #020617;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1000px;
+        }
+
+        thead {
+            background: #020617;
+            border-bottom: 2px solid #334155;
+        }
+
+        th {
+            padding: 14px 16px;
+            font-size: 14px;
+            color: #93c5fd;
+            text-align: center;
+            border-right: 1px solid #1e293b;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 14px 16px;
+            font-size: 14px;
+            border-right: 1px solid #1e293b;
+            vertical-align: top;
+            text-align: center;
+        }
+
+        /* Alternating rows */
+        tbody tr:nth-child(odd) {
+            background: #020617;
+        }
+
+        tbody tr:nth-child(even) {
+            background: #0b1220;
+        }
+
+        tbody tr:hover {
+            background: #0f172a;
+        }
+
+        /* Complaint & feedback text */
+        td:nth-child(3),
+        td:nth-child(4) {
+            text-align: left;
+            line-height: 1.6;
+        }
+
+        /* Reply cell */
+        td:last-child {
+            min-width: 220px;
+        }
+
+        /* Reply form */
+        input[type="text"] {
+            width: 100%;
+            padding: 8px 10px;
+            background: #020617;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #e5e7eb;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        input::placeholder {
+            color: #94a3b8;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #60a5fa;
+        }
+
+        button {
+            width: 100%;
+            padding: 8px;
+            border-radius: 8px;
+            background: #2563eb;
+            color: white;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        /* Existing reply text */
+        .reply-text {
+            color: #a7f3d0;
+            font-style: italic;
+            font-weight: 500;
+        }
+
+        /* Empty state */
+        td[colspan] {
+            padding: 25px;
+            font-weight: 500;
+            color: #94a3b8;
+            text-align: center;
+        }
+    </style>
 </head>
+
 <body>
 
-<h1>User Feedback Table</h1>
+<h1>User Feedback</h1>
 
-<table border="1" cellpadding="8" cellspacing="0">
-    <tr>
-        <th>SI No</th>
-        <th>User Name</th>
-        <th>Complaint</th>
-        <th>Feedback</th>
-        <th>Date Submitted</th>
-        <th>Replay</th>
-    </tr>
+<div class="table-wrapper">
+<table>
+    <thead>
+        <tr>
+            <th>SI No</th>
+            <th>User Name</th>
+            <th>Complaint</th>
+            <th>Feedback</th>
+            <th>Date Submitted</th>
+            <th>Reply</th>
+        </tr>
+    </thead>
 
+    <tbody>
     {% for feedback in feedback %}
     <tr>
         <td>{{ forloop.counter }}</td>
@@ -26,15 +165,15 @@
         <td>{{ feedback.ComplaintId.Description }}</td>
         <td>{{ feedback.FeedbackText }}</td>
         <td>{{ feedback.DateSubmitted }}</td>
-        <td> 
+        <td>
             {% if feedback.Replay %}
-            {{feedback.Replay}}
+                <div class="reply-text">{{ feedback.Replay }}</div>
             {% else %}
-            <form action="/replay/{{feedback.id}}" method="post">
-                {% csrf_token %}
-                <input type="text" name="Replay">
-                <button>Reply</button>
-            </form>
+                <form action="/replay/{{feedback.id}}" method="post">
+                    {% csrf_token %}
+                    <input type="text" name="Replay" placeholder="Type reply here">
+                    <button>Reply</button>
+                </form>
             {% endif %}
         </td>
     </tr>
@@ -43,7 +182,9 @@
         <td colspan="6">No feedbacks found.</td>
     </tr>
     {% endfor %}
+    </tbody>
 </table>
+</div>
 
 </body>
 </html>

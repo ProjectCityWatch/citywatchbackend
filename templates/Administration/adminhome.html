@@ -3,15 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Admin Panel</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Inter", "Segoe UI", sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: radial-gradient(circle at top, #0f172a, #020617);
+            color: #e5e7eb;
+        }
+
+        /* NAVBAR */
+        .navbar {
+            height: 64px;
+            padding: 0 32px;
+            display: flex;
+            align-items: center;
+            backdrop-filter: blur(12px);
+            background: rgba(255,255,255,0.04);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: #38bdf8;
+        }
+
+        /* MAIN */
+        .container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 32px;
+        }
+
+        .section-title {
+            font-size: 22px;
+            font-weight: 500;
+            margin-bottom: 30px;
+            letter-spacing: 1px;
+            color: #f8fafc;
+        }
+
+        /* GRID */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 24px;
+        }
+
+        /* PANEL */
+        .card {
+            position: relative;
+            padding: 26px 28px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 14px;
+            text-decoration: none;
+            color: #e5e7eb;
+            backdrop-filter: blur(18px);
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        /* LEFT ACCENT */
+        .card::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 18px;
+            width: 3px;
+            height: 32px;
+            background: linear-gradient(#38bdf8, #0ea5e9);
+            border-radius: 4px;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+
+        .card:hover::before {
+            opacity: 1;
+        }
+
+        .card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 25px 40px rgba(0,0,0,0.55);
+        }
+
+        .card h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+            color: #f8fafc;
+        }
+
+        .card p {
+            font-size: 13px;
+            line-height: 1.6;
+            color: #cbd5f5;
+        }
+    </style>
 </head>
+
 <body>
-    <a href="/manage-department">Add and Manage Authority</a><br>
-    <a href="/manage-users">User Management</a><br>
-    <a href="/assign-works">Assign Work to Authority</a><br>
-    <a href="/viewcomplaints">Dashboard</a><br>
-    <a href="/feedbackview">View Feedback</a><br>
-    <a href="/send-notifications">Notifications</a><br>
-     <a href="/notificationview">View Notifications</a><br>
+
+    <!-- Navbar -->
+    <div class="navbar">
+        CityWatch · Admin Control
+    </div>
+
+    <!-- Content -->
+    <div class="container">
+        <h2 class="section-title">Quick Actions</h2>
+
+        <div class="card-grid">
+
+            <a href="/manage-department" class="card">
+                <h3>Add & Manage Authority</h3>
+                <p>Create, update, and manage authority departments.</p>
+            </a>
+
+            <a href="/manage-users" class="card">
+                <h3>User Management</h3>
+                <p>View and control registered users.</p>
+            </a>
+
+            <a href="/assign-works" class="card">
+                <h3>Assign Work</h3>
+                <p>Assign complaints and tasks to authorities.</p>
+            </a>
+
+            <a href="/admin-dashboard" class="card">
+                <h3>Dashboard</h3>
+                <p>View and track all reported complaints.</p>
+            </a>
+
+            <a href="/feedbackview" class="card">
+                <h3>View Feedback</h3>
+                <p>Check feedback submitted by users.</p>
+            </a>
+
+            <a href="/send-notifications" class="card">
+                <h3>Send Notifications</h3>
+                <p>Notify users and authorities.</p>
+            </a>
+
+            <a href="/notificationview" class="card">
+                <h3>View Notifications</h3>
+                <p>Review previously sent notifications.</p>
+            </a>
+
+        </div>
+    </div>
+
 </body>
 </html>

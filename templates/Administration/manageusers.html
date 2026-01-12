@@ -4,37 +4,127 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage User</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Inter", "Segoe UI", sans-serif;
+        }
+
+        body {
+            background: #020617;
+            color: #e5e7eb;
+            padding: 40px;
+        }
+
+        h2 {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 25px;
+            letter-spacing: 0.5px;
+        }
+
+        .table-wrapper {
+            background: rgba(255, 255, 255, 0.045);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow:
+                0 8px 25px rgba(0, 0, 0, 0.55),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: rgba(255, 255, 255, 0.06);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        th, td {
+            padding: 16px 18px;
+            font-size: 14px;
+            text-align: left;
+        }
+
+        th {
+            color: #93c5fd;
+            font-weight: 600;
+            letter-spacing: 0.6px;
+        }
+
+        tr {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        tbody tr:hover {
+            background: rgba(255, 255, 255, 0.035);
+        }
+
+        .block {
+            color: #f87171;
+            font-weight: 500;
+            text-decoration: none;
+        }
+
+        .unblock {
+            color: #4ade80;
+            font-weight: 500;
+            text-decoration: none;
+        }
+
+        .block:hover,
+        .unblock:hover {
+            text-decoration: underline;
+        }
+    </style>
 </head>
+
 <body>
 
     <h2>Manage Users</h2>
 
-    <table border="1" cellpadding="10">
-        <tr>
-            <th>User ID</th>
-            <th>User Name</th>
-            <th>Phone Number</th>
-            <th>Email</th>
-            <th>Actions</th>
-        </tr>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>User ID</th>
+                    <th>User Name</th>
+                    <th>Phone Number</th>
+                    <th>Email</th>
+                    <th>Warnings</th>
+                    <th>Total Points</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
 
-        {% for i in val %}
-        <tr>
-            <td>{{ i.id }}</td>
-            <td>{{ i.Name }}</td>
-            <td>{{ i.PhoneNo }}</td>
-            <td>{{ i.Email }}</td>
-            <td>
-            {% if i.LoginId.UserType == "user" %}
-                 <a href="/BlockUser/{{ i.LoginId.id }}">Block</a> |
-            {% elif i.LoginId.UserType == "Blocked" %}
-                 <a href="/UnblockUser/{{ i.LoginId.id }}">Unblock</a>
-            {% endif %}
-
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
+            <tbody>
+                {% for i in val %}
+                <tr>
+                    <td>{{ i.id }}</td>
+                    <td>{{ i.Name }}</td>
+                    <td>{{ i.PhoneNo }}</td>
+                    <td>{{ i.Email }}</td>
+                    <td>{{ i.warnings }}</td>
+                    <td>{{ i.total_points }}</td>
+                    <td>
+                        {% if i.LoginId.UserType == "USER" %}
+                            <a href="/BlockUser/{{ i.LoginId.id }}" class="block">Block</a>
+                        {% elif i.LoginId.UserType == "Blocked" %}
+                            <a href="/UnblockUser/{{ i.LoginId.id }}" class="unblock">Unblock</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
 </body>
 </html>

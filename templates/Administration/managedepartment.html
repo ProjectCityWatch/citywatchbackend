@@ -4,29 +4,224 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Department</title>
-</head>
-<body>
-<table border="1px">
-    <tr>
-        <th>SI NO</th>
-        <th>Department name</th>
-        <th>Address</th>
-        <th>Contact info</th>
-        <th><a href="/add-department">+</a></th>
 
-    </tr>
-    {% for i in val %}
-    <tr>
-        <td>{{ forloop.counter}}</td>
-        <td>{{ i.DepartmentName }}</td>
-        <td>{{ i.Address }}</td>
-        <td>{{ i.ContactInfo}}</td>
-        <td>
-        <a href="/DeleteDepartment/{{i.id}}">Delete</a>
-        </td>
-    </tr>
-    {% endfor %}
-</table>
-    
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Inter", "Segoe UI", sans-serif;
+        }
+
+        body {
+            background: #020617;
+            color: #e5e7eb;
+            padding: 40px;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .page-header h2 {
+            font-size: 22px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .table-wrapper {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: rgba(255,255,255,0.08);
+        }
+
+        th, td {
+            padding: 16px 18px;
+            text-align: left;
+            font-size: 14px;
+            vertical-align: top;
+        }
+
+        th {
+            color: #93c5fd;
+            font-weight: 600;
+            letter-spacing: 0.6px;
+        }
+
+        tr {
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+
+        tbody tr:hover {
+            background: rgba(255,255,255,0.04);
+        }
+
+        th:nth-child(3),
+        td:nth-child(3) {
+            max-width: 260px;
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        .add-btn {
+            text-decoration: none;
+            font-size: 18px;
+            font-weight: bold;
+            color: #020617;
+            background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+            padding: 6px 12px;
+            border-radius: 8px;
+        }
+
+        .delete-link {
+            color: #f87171;
+            text-decoration: none;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        /* 🔴 Instagram-style modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(6px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+        }
+
+        .modal-box {
+            background: #020617;
+            border-radius: 14px;
+            width: 320px;
+            padding: 22px;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+        }
+
+        .modal-box h3 {
+            font-size: 18px;
+            margin-bottom: 6px;
+        }
+
+        .modal-box p {
+            font-size: 14px;
+            color: #9ca3af;
+            margin-bottom: 18px;
+        }
+
+        .modal-actions {
+            display: flex;
+            border-top: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .modal-actions button,
+        .modal-actions a {
+            flex: 1;
+            padding: 12px 0;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #e5e7eb;
+            font-size: 14px;
+            text-decoration: none;
+        }
+
+        .cancel-btn {
+            border-right: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .confirm-btn {
+            color: #f87171;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="page-header">
+    <h2>Manage Departments</h2>
+</div>
+
+<div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th>SI NO</th>
+                <th>Department Name</th>
+                <th>Address</th>
+                <th>Contact Info</th>
+                <th>HeadName</th>
+                <th>Email</th>
+                <th>
+                    <a href="/add-department" class="add-btn">+</a>
+                </th>
+            </tr>
+        </thead>
+
+        <tbody>
+        {% for i in val %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ i.DepartmentName }}</td>
+                <td>{{ i.Address }}</td>
+                <td>{{ i.ContactInfo }}</td>
+                <td>{{ i.HeadName }}</td>
+                <td>{{ i.Email }}</td>
+                <td>
+                    <span class="delete-link"
+                          onclick="openDeleteModal('{{ i.id }}', '{{ i.DepartmentName }}')">
+                        Delete
+                    </span>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- 🔴 Delete Modal -->
+<div id="deleteModal" class="modal-overlay">
+    <div class="modal-box">
+        <h3>Delete Department?</h3>
+        <p id="deptName"></p>
+
+        <div class="modal-actions">
+            <button class="cancel-btn" onclick="closeDeleteModal()">Cancel</button>
+            <a id="confirmDeleteBtn" class="confirm-btn">Delete</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openDeleteModal(id, name) {
+        document.getElementById("deleteModal").style.display = "flex";
+        document.getElementById("deptName").innerText = name;
+        document.getElementById("confirmDeleteBtn").href = "/DeleteDepartment/" + id;
+    }
+
+    function closeDeleteModal() {
+        document.getElementById("deleteModal").style.display = "none";
+    }
+</script>
+
 </body>
 </html>

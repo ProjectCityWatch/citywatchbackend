@@ -16,3 +16,7 @@ venv/
 
 # IDE
 .vscode/
+
+# Google Vision credentials
+cityApp/google-vision/
+*.json

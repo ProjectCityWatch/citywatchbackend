@@ -3,48 +3,180 @@
 <head>
     <meta charset="UTF-8">
     <title>View User Feedback</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Inter", "Segoe UI", Arial, sans-serif;
+        }
+
+        body {
+            background: #020617;
+            color: #e5e7eb;
+            padding: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 26px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        /* TABLE WRAPPER */
+        .table-wrapper {
+            background: rgba(255, 255, 255, 0.045);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow:
+                0 8px 25px rgba(0, 0, 0, 0.55),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: rgba(255, 255, 255, 0.06);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        th, td {
+            padding: 16px 18px;
+            font-size: 14px;
+            vertical-align: top;
+            text-align: center;
+        }
+
+        th {
+            color: #93c5fd;
+            font-weight: 600;
+            letter-spacing: 0.4px;
+            white-space: nowrap;
+        }
+
+        tr {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        tbody tr:hover {
+            background: rgba(255, 255, 255, 0.035);
+        }
+
+        /* Feedback text column */
+        td:nth-child(3) {
+            text-align: left;
+            line-height: 1.6;
+            color: #e5e7eb;
+        }
+
+        /* Reply text (displayed reply) */
+        td:nth-child(5) {
+            color: #a7f3d0;
+            font-style: italic;
+        }
+
+        /* Reply input */
+        input[type="text"] {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            background: rgba(2, 6, 23, 0.8);
+            color: #e5e7eb;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+
+        input::placeholder {
+            color: #94a3b8;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #60a5fa;
+        }
+
+        /* Button */
+        button {
+            padding: 8px 14px;
+            background: #2563eb;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        /* Empty state */
+        td[colspan] {
+            text-align: center;
+            padding: 25px;
+            font-weight: 500;
+            color: #94a3b8;
+        }
+    </style>
 </head>
+
 <body>
 
-<h1>User Feedback Table</h1>
+<h1>User Feedback</h1>
 
-<table border="1" cellpadding="8" cellspacing="0">
-    <tr>
-        <th>SI No</th>
-        <th>User Name</th>
-        <th>Complaint</th>
-        <th>Feedback</th>
-        <th>Date Submitted</th>
-        <th>Reply</th>
-        <th>Action</th>
-    </tr>
+<div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th>SI No</th>
+                <th>User Name</th>
+                <th>Feedback</th>
+                <th>Date Submitted</th>
+                <th>Reply</th>
+                <th>Action</th>
+            </tr>
+        </thead>
 
-    {% for feedback in feedbacks %}
-    <tr>
-        <td>{{ forloop.counter }}</td>
-        <td>{{ feedback.UserId.Name }}</td>
-        <td>{{ feedback.ComplaintId.Description }}</td>
-        <td>{{ feedback.FeedbackText }}</td>
-        <td>{{ feedback.DateSubmitted }}</td>
-        <td>{{ feedback.Replay }}</td>
-        <td>
-            <form method="post">
-                {% csrf_token %}
-                <input type="hidden" name="feedback_id" value="{{ feedback.id }}">
-                <input type="text" name="reply"
-                       value="{{ feedback.Reply }}"
-                       placeholder="Type reply here"
-                       required>
-                <button type="submit">Send Reply</button>
-            </form>
-        </td>
-    </tr>
-    {% empty %}
-    <tr>
-        <td colspan="6">No feedbacks found.</td>
-    </tr>
-    {% endfor %}
-</table>
+        <tbody>
+            {% for feedback in feedbacks %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ feedback.UserId.Name }}</td>
+                <td>{{ feedback.FeedbackText }}</td>
+                <td>{{ feedback.DateSubmitted }}</td>
+                <td>{{ feedback.Replay }}</td>
+                <td>
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="feedback_id" value="{{ feedback.id }}">
+                        <input type="text"
+                               name="reply"
+                               value="{{ feedback.Reply }}"
+                               placeholder="Type reply here"
+                               required>
+                        <button type="submit">Send Reply</button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6">No feedbacks found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 
 </body>
 </html>

@@ -3,6 +3,7 @@ from django.urls import path
 
 from cityApp.views import *
 
+
 urlpatterns = [
    
     path('', LoginView.as_view(), name='login'),
@@ -18,10 +19,12 @@ urlpatterns = [
     path('UnblockUser/<int:l_id>', UnblockUser.as_view(), name='UnblockUser'),
     path('notification/', NotificationView.as_view(), name='notification'),
     path('send-notifications/', SendNotificationsView.as_view(), name='send_notifications'),
-    path('notificationview/', ViewNotification.as_view(), name='notificationview'),
+
     path('submit-work/<int:id>/', SubmitWorkView.as_view(), name='submit_work'),
     path('feedbackview/', ViewFeedback.as_view(), name='ViewFeedback'),
     path('viewcomplaints/', ViewComplaints.as_view(), name='viewcomplaints'),
+    path('mark-fake/<int:c_id>/', MarkFakeComplaint.as_view(), name='mark_fake'),
+    path('admin-dashboard/', AdminDashboardView.as_view(), name='admin-dashboard'),
 
       # --- AUTHORITY ---
     path('authorityhome/', AuthorityHomeView.as_view(), name='authorityhome'),
@@ -42,11 +45,14 @@ urlpatterns = [
 
     path('UserLogin', LoginAPI.as_view(), name='userlogin'),
     path('User', UserRegistration.as_view(), name='register'),
-    path('send-complaint/<int:id>/',SendComplaintAPI.as_view(),name='send_complaint'),
+    path('send-complaint/<int:id>/',SendComplaintCAPI.as_view(),name='send_complaint'),
     path('view-timeline/<int:id>', ViewTimelineAPI.as_view(), name='view-timeline'),
     path('SendAck/<int:id>', SendAck.as_view(), name='SendAck'),
     path('view-allcomplaints',ViewAllcomplaintsAPI.as_view(),name='view-allcomplaints'),
     path('ComplaintLikeAPI/<int:lid>',ComplaintLikeAPI.as_view(),name='ComplaintLikeAPI'),
     path('ComplaintCommentAPI/<int:lid>',ComplaintCommentAPI.as_view(),name='ComplaintCommentAPI'),
+
+    path('api/notifications/<int:lid>/', NotificationListAPI.as_view(), name='api_notifications'),
+    path('viewprofile/<int:id>', ViewProfileAPI.as_view(), name='viewprofile')
 
 ]

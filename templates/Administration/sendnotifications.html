@@ -4,8 +4,128 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Send notifications</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Inter", "Segoe UI", Arial, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: #020617;
+            color: #e5e7eb;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 30px;
+        }
+
+        /* Card */
+        .card {
+            width: 100%;
+            max-width: 620px;
+            background: rgba(255, 255, 255, 0.045);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 16px;
+            padding: 30px 32px;
+            box-shadow:
+                0 10px 30px rgba(0, 0, 0, 0.55),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 28px;
+            font-size: 26px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #cbd5f5;
+        }
+
+        select,
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 11px 12px;
+            font-size: 14px;
+            border-radius: 8px;
+            background: rgba(2, 6, 23, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #e5e7eb;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 110px;
+        }
+
+        select:focus,
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #60a5fa;
+            background: rgba(2, 6, 23, 0.9);
+        }
+
+        /* Buttons */
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+        }
+
+        button:first-of-type {
+            background: #2563eb;
+            color: white;
+        }
+
+        button:first-of-type:hover {
+            background: #1d4ed8;
+        }
+
+        button:last-of-type {
+            background: transparent;
+            color: #e5e7eb;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+        }
+
+        button:last-of-type:hover {
+            background: rgba(255, 255, 255, 0.06);
+        }
+    </style>
 </head>
+
 <body>
+
+<div class="card">
+    <h2>Send Notifications</h2>
+
     <form>
         <label for="recipient-type">Recipient Type</label>
         <select>
@@ -13,14 +133,20 @@
             <option>Department</option>
             <option>All users</option>
             <option>All departments</option>
-        </select><br><br>
-        
+        </select>
+
         <label for="subject">Subject</label>
-        <input type="text"><br><br>
+        <input type="text">
+
         <label for="message">Message</label>
-        <textarea cols="20" rows="5"></textarea><br><br>
-        <button>Send Now</button>
-        <button>Reset</button>
+        <textarea cols="20" rows="5"></textarea>
+
+        <div class="btn-group">
+            <button>Send Now</button>
+            <button>Reset</button>
+        </div>
     </form>
+</div>
+
 </body>
 </html>

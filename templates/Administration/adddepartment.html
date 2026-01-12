@@ -4,31 +4,135 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Add Department</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Inter", "Segoe UI", Arial, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: #020617;
+            color: #e5e7eb;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 30px;
+        }
+
+        /* Card */
+        .card {
+            width: 100%;
+            max-width: 520px;
+            background: rgba(255, 255, 255, 0.045);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 16px;
+            padding: 30px 32px;
+            box-shadow:
+                0 10px 30px rgba(0, 0, 0, 0.55),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #cbd5f5;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(2, 6, 23, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            color: #e5e7eb;
+            font-size: 14px;
+        }
+
+        textarea {
+            resize: vertical;
+        }
+
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #60a5fa;
+            background: rgba(2, 6, 23, 0.9);
+        }
+
+        button {
+            margin-top: 10px;
+            padding: 12px;
+            background: #2563eb;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+    </style>
 </head>
+
 <body>
-    <h1>Add Department</h1>
-    <form method="post" action="">
-        {% csrf_token %}
-    <label>Department Name</label>
-    <input type="text" name="department_name"><br><br>
 
-    <label>Address</label>
-    <textarea name="address" rows="5" cols="20"></textarea><br><br>
+    <div class="card">
+        <h1>Add Department</h1>
 
-    <label>Contact Info</label>
-    <input type="text" name="contact"><br><br>
+        <form method="post" action="">
+            {% csrf_token %}
 
-    <label>Email</label>
-    <input type="text" name="Email"><br><br>
+            <label>Department Name</label>
+            <select name="department_name" id="">
+                <option value="">Select Department</option>
+                <option value="Roads And Public Works">Roads And Public Works</option>
+                <option value="Water Authority">Water Authority</option>
+                <option value="Waste Management">Waste Management</option>
+                <option value="Electrical Department">Electrical Department</option>
+            </select>
 
-    <label>Head Name</label>
-    <input type="text" name="head"><br><br>
+            <label>Address</label>
+            <textarea name="address" rows="5" cols="20"></textarea>
 
-    <label>Password</label>
-    <input type="password" name="password"><br><br>
+            <label>Contact Info</label>
+            <input type="text" name="contact">
 
-    <button type="submit">Submit</button>
-</form>
+            <label>Email</label>
+            <input type="text" name="Email">
+
+            <label>Head Name</label>
+            <input type="text" name="head">
+
+            <label>Password</label>
+            <input type="password" name="password">
+
+            <button type="submit">Submit</button>
+        </form>
+    </div>
 
 </body>
 </html>

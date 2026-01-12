@@ -8,6 +8,40 @@ from cityApp.models import *
 from cityApp.form import *
 from cityApp.serializers import *
 from django.db.models import Exists, OuterRef, Subquery
+from django.db.models import Sum
+from .models import PointsTable
+import requests
+from requests.auth import HTTPBasicAuth
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+
+from cityApp.models import UserTable
+from cityApp.serializers import AddComplaintsSerializer
+
+
+# =====================================================
+# IMAGGA CONFIG (FREE & CONFIRMED)
+# =====================================================
+
+IMAGGA_API_KEY = "acc_dc4bc19828e5b88"
+IMAGGA_API_SECRET = "aed3d3c05b419865f1928f5d4b6934e4"
+IMAGGA_ENDPOINT = "https://api.imagga.com/v2/tags"
+
+
+
+
+def recalculate_user_points(user):
+    total = PointsTable.objects.filter(
+        ComplaintId__UserId=user
+    ).aggregate(total=Sum('Points'))['total']
+
+    # If no points exist, make it 0
+    user.total_points = total if total is not None else 0
+    user.save()
+
 
 # --- Login ---
 class LoginView(View):
@@ -32,6 +66,41 @@ class LoginView(View):
             return render(request, 'Login.html', {'error': 'Invalid username or password'})
 
 # -------------------------------------------------- Administration ---------------------------------
+from django.shortcuts import get_object_or_404, redirect
+from django.views import View
+from .models import ComplaintsTable, PointsTable
+
+class MarkFakeComplaint(View):
+    def post(self, request, c_id):
+        complaint = get_object_or_404(ComplaintsTable, id=c_id)
+
+        # Prevent double punishment
+        if complaint.Status == 'fake':
+            return redirect('assign_works')
+
+        # 1️⃣ Mark complaint as fake
+        complaint.Status = 'fake'
+        complaint.save()
+
+        # 2️⃣ Add warning
+        user = complaint.UserId
+        user.warnings += 1
+        user.save()
+
+        # 3️⃣ Log -100 points
+        PointsTable.objects.create(
+            ComplaintId=complaint,
+            Points=-100
+        )
+
+        # 4️⃣ Recalculate & store total points (VIEW LOGIC)
+        recalculate_user_points(user)
+
+        return redirect('assign_works')
+
+
+
+
 class AddAdminHomeView(View):
     def get(self, request):
         return render(request, 'Administration/adminhome.html')
@@ -47,8 +116,9 @@ class AddDepartmentView(View):
         password = request.POST['password']
         email = request.POST['Email']
         login_obj = LoginTable()
-        login_obj.Username=department_name
+        login_obj.Username=email
         login_obj.Password=password
+        login_obj.UserType='Authority'
         login_obj.save()
         obj = DepartmentsTable()
         obj.DepartmentName=department_name
@@ -66,15 +136,27 @@ class AssignWorks(View):
             ComplaintId=OuterRef('pk')
         ).values('EndingDate')[:1]
 
+#         complaints = ComplaintsTable.objects.exclude(
+#     Status='fake'
+# ).annotate(
+#     final_deadline=Subquery(assign_date),
+#     deadline_changed=Exists(
+#         TimeLineTable.objects.filter(
+#             ComplaintId=OuterRef('pk'),
+#             Status="Requested"
+#         )
+#     )
+# )
         complaints = ComplaintsTable.objects.annotate(
-            final_deadline=Subquery(assign_date),
-            deadline_changed=Exists(
-                TimeLineTable.objects.filter(
-                    ComplaintId=OuterRef('pk'),
-                    Status="Requested"
-                )
-            )
+    final_deadline=Subquery(assign_date),
+    deadline_changed=Exists(
+        TimeLineTable.objects.filter(
+            ComplaintId=OuterRef('pk'),
+            Status="Requested"
         )
+    )
+)
+
 
         departments = DepartmentsTable.objects.all()
 
@@ -85,13 +167,18 @@ class AssignWorks(View):
         department_id = request.GET.get('department')
         status = request.GET.get('status')
 
-        if department_id and department_id != "all":
-            complaints = complaints.filter(DepartmentId_id=department_id)
-
         if status == "assigned":
-            complaints = complaints.filter(id__in=assigned_ids)
+            complaints = complaints.exclude(Status='fake').filter(id__in=assigned_ids)
+
         elif status == "not_assigned":
-            complaints = complaints.exclude(id__in=assigned_ids)
+             complaints = complaints.exclude(Status='fake').exclude(id__in=assigned_ids)
+
+        elif status == "fake":
+            complaints = complaints.filter(Status='fake')
+
+        else:
+            complaints = complaints.exclude(Status='fake')
+
 
         return render(
             request,
@@ -161,8 +248,9 @@ class ManageDepartmentView(View):
 
 class ManageUsersView(View):
     def get(self, request):
-        obj = UserTable.objects.all()
+        obj = UserTable.objects.order_by('-warnings', '-total_points')
         return render(request, 'Administration/manageusers.html', {'val': obj})
+
     
 
 class BlockUser(View):
@@ -176,7 +264,7 @@ class BlockUser(View):
 class UnblockUser(View):
     def get(self, request,l_id):
         obj = LoginTable.objects.get(id = l_id)
-        obj.UserType = 'user'
+        obj.UserType = 'USER'
         obj.save()
         return HttpResponse('''<script>alert('User Unblocked');window.location='/manage-users';</script>''')
 
@@ -283,47 +371,168 @@ class SubmitWorkView(View):
 #         )
 
 
+# class UpdateStatus(View):
+#     def post(self, request, c_id):
+#         status = request.POST.get('status')
+
+#         # 1️⃣ Update complaint status
+#         complaint = ComplaintsTable.objects.get(id=c_id)
+#         user_id=complaint.UserId.id
+    
+#         complaint.Status = status
+#         complaint.save(update_fields=['Status'])
+   
+#         if status == "Resolved":
+#             Point_obj = PointsTable.objects.get(ComplaintId_id=complaint.id)
+#             point = Point_obj.Points
+#             Point_obj.Points = 200 + point
+#             Point_obj.save()
+#             obj = BadgeTable.objects.filter(ComplaintId__UserId_id=user_id, ComplaintId__Status="Resolved")
+#             if len(obj)==1:
+#                 Badge_obj = BadgeTable()
+#                 Badge_obj.ComplaintId = complaint
+#                 Badge_obj.Badge = 'First Problem Resolved'
+#                 Badge_obj.save()
+
+#         # 2️⃣ Update assigned work status (if exists)
+#         assign = AssignWork.objects.filter(ComplaintId_id=c_id).first()
+#         if assign:
+#             assign.Status = status
+#             assign.save(update_fields=['Status'])
+
+#         # 3️⃣ ALWAYS create a new timeline entry (HISTORY)
+#         TimeLineTable.objects.create(
+#             ComplaintId=complaint,
+#             Status=status
+#         )
+#         Notification.objects.create(ComplaintsId=complaint)
+#         return HttpResponse(
+#             "<script>alert('Status updated Successfully');"
+#             "window.location='/viewcomplaintsview/';</script>"
+#         )
+# 
 class UpdateStatus(View):
     def post(self, request, c_id):
         status = request.POST.get('status')
 
-        # 1️⃣ Update complaint status
+        # ---------------------------------------
+        # 1️⃣ Get complaint & user
+        # ---------------------------------------
         complaint = ComplaintsTable.objects.get(id=c_id)
-        user_id=complaint.UserId.id
-    
+        user = complaint.UserId
+
+        # Update complaint status
         complaint.Status = status
         complaint.save(update_fields=['Status'])
-   
-        if status == "Resolved":
-            Point_obj = PointsTable.objects.get(ComplaintId_id=complaint.id)
-            point = Point_obj.Points
-            Point_obj.Points = 200 + point
-            Point_obj.save()
-            obj = BadgeTable.objects.filter(ComplaintId__UserId_id=user_id, ComplaintId__Status="Resolved")
-            if len(obj)==1:
-                Badge_obj = BadgeTable()
-                Badge_obj.ComplaintId = complaint
-                Badge_obj.Badge = 'First Problem Resolved'
-                Badge_obj.save()
 
-        # 2️⃣ Update assigned work status (if exists)
+        # ---------------------------------------
+        # 2️⃣ RESOLUTION LOGIC
+        # ---------------------------------------
+        if status == "Resolved":
+
+            # 🔹 First Resolution badge + points
+            if not BadgeTable.objects.filter(
+                ComplaintId__UserId=user,
+                Badge="First Problem Resolved"
+            ).exists():
+                PointsTable.objects.create(ComplaintId=complaint, Points=200)
+                BadgeTable.objects.create(
+                    ComplaintId=complaint,
+                    Badge="First Problem Resolved"
+                )
+            else:
+                PointsTable.objects.create(ComplaintId=complaint, Points=100)
+
+            # ---------------------------------------
+            # 🏅 CATEGORY-BASED BADGES
+            # ---------------------------------------
+            badge_rules = [
+                ("Road Damage", "Pothole Pro"),
+                ("Waste", "Clean City Champ"),
+                ("Water Leak", "Water Watcher"),
+                ("Street Light", "Streetlight Saver"),
+            ]
+
+            for category, badge_name in badge_rules:
+                if (
+                    ComplaintsTable.objects.filter(UserId=user, Category=category).count() >= 5 and
+                    ComplaintsTable.objects.filter(
+                        UserId=user,
+                        Category=category,
+                        Status="Resolved"
+                    ).count() >= 5 and
+                    not BadgeTable.objects.filter(
+                        ComplaintId__UserId=user,
+                        Badge=badge_name
+                    ).exists()
+                ):
+                    BadgeTable.objects.create(
+                        ComplaintId=complaint,
+                        Badge=badge_name
+                    )
+                    PointsTable.objects.create(
+                        ComplaintId=complaint,
+                        Points=200
+                    )
+
+            # ---------------------------------------
+            # 🏆 LOCAL HERO BADGE
+            # ---------------------------------------
+            total_resolved = ComplaintsTable.objects.filter(
+                UserId=user,
+                Status="Resolved"
+            ).count()
+
+            if (
+                total_resolved >= 10 and
+                not BadgeTable.objects.filter(
+                    ComplaintId__UserId=user,
+                    Badge="Local Hero"
+                ).exists()
+            ):
+                BadgeTable.objects.create(
+                    ComplaintId=complaint,
+                    Badge="Local Hero"
+                )
+                PointsTable.objects.create(
+                    ComplaintId=complaint,
+                    Points=200
+                )
+
+            # ---------------------------------------
+            # 🔥 TOTAL POINTS RECALCULATION (ADDED)
+            # ---------------------------------------
+            from django.db.models import Sum
+
+            total = PointsTable.objects.filter(
+                ComplaintId__UserId=user
+            ).aggregate(total=Sum('Points'))['total']
+
+            user.total_points = total if total is not None else 0
+            user.save(update_fields=['total_points'])
+
+        # ---------------------------------------
+        # 3️⃣ Update assigned work
+        # ---------------------------------------
         assign = AssignWork.objects.filter(ComplaintId_id=c_id).first()
         if assign:
             assign.Status = status
             assign.save(update_fields=['Status'])
 
-        # 3️⃣ ALWAYS create a new timeline entry (HISTORY)
+        # ---------------------------------------
+        # 4️⃣ Timeline
+        # ---------------------------------------
         TimeLineTable.objects.create(
             ComplaintId=complaint,
             Status=status
         )
+
+
+
         return HttpResponse(
             "<script>alert('Status updated Successfully');"
             "window.location='/viewcomplaintsview/';</script>"
         )
-
-
-
 
 class ViewComplaints(View):
     def get(self, request):
@@ -346,17 +555,8 @@ class ViewFeedback(View):
 
         return redirect('ViewFeedback')
     
-class ViewNotification(View):
-    def get(self, request):
-        notifications = Notification.objects.select_related(
-            'Assignid__ComplaintId__DepartmentId'
-        ).order_by('-Date')
 
-        return render(
-            request,
-            'Administration/notificationview.html',
-            {'notifications': notifications}
-        )
+
 
 
 # ------------------------------ Authority ---------------------------------------
@@ -429,10 +629,7 @@ class ViewComplaintsView(View):
         assign.Status = status
         assign.save()
 
-        Notification.objects.create(
-            Assignid=assign,
-            Message=f"The assigned work status is {status}"
-        )
+
 
         return HttpResponse(
             "<script>alert('Status changed successfully');"
@@ -582,54 +779,200 @@ class LoginAPI(APIView):
             status=status.HTTP_200_OK
         )
     
-class SendComplaintAPI(APIView):
-    def post(self,request,id):
-        print(request.data)
-        user = UserTable.objects.get(LoginId__id=id)
-        serializer=AddComplaintsSerializer(data=request.data)
-        anonymous = request.data.get('is_anonymous')
-        if anonymous == 'false':
-            anonymous=False
-        elif anonymous == 'true':
-            anonymous=True
-        c_obj = ComplaintsTable.objects.filter(UserId__LoginId_id=id) 
-        print("***********************",c_obj) 
-        if len(c_obj) == 0:   
-            if serializer.is_valid():
-                c=serializer.save(UserId=user, is_anonymous=anonymous)
-                Point_obj = PointsTable()
-                Point_obj.ComplaintId = c
-                Point_obj.Points = 200
-                Point_obj.save()
-                Badge_obj = BadgeTable()
-                Badge_obj.ComplaintId = c
-                Badge_obj.Badge = 'First Report'
-                Badge_obj.save()
-                TimeLineTable.objects.create(ComplaintId=c, Status='Pending')
+# class SendComplaintAPI(APIView):
+#     def post(self,request,id):
+#         print(request.data)
+#         user = UserTable.objects.get(LoginId__id=id)
+#         serializer=AddComplaintsSerializer(data=request.data)
+#         anonymous = request.data.get('is_anonymous')
+#         if anonymous == 'false':
+#             anonymous=False
+#         elif anonymous == 'true':
+#             anonymous=True
+#         c_obj = ComplaintsTable.objects.filter(UserId__LoginId_id=id) 
+#         print("***********************",c_obj) 
+#         if len(c_obj) == 0:   
+#             if serializer.is_valid():
+#                 c=serializer.save(UserId=user, is_anonymous=anonymous)
+#                 Point_obj = PointsTable()
+#                 Point_obj.ComplaintId = c
+#                 Point_obj.Points = 200
+#                 Point_obj.save()
+#                 Badge_obj = BadgeTable()
+#                 Badge_obj.ComplaintId = c
+#                 Badge_obj.Badge = 'First Report'
+#                 Badge_obj.save()
+#                 TimeLineTable.objects.create(ComplaintId=c, Status='Pending')
                 
-                return Response(serializer.data,status=status.HTTP_201_CREATED)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        else:    
-            if serializer.is_valid():
-                c=serializer.save(UserId=user, is_anonymous=anonymous)
-                Point_obj = PointsTable()
-                Point_obj.ComplaintId = c
-                Point_obj.Points = 50
-                Point_obj.save()
-                TimeLineTable.objects.create(ComplaintId=c, Status='Pending')
+#                 return Response(serializer.data,status=status.HTTP_201_CREATED)
+#             else:
+#                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#         else:    
+#             if serializer.is_valid():
+#                 c=serializer.save(UserId=user, is_anonymous=anonymous)
+#                 Point_obj = PointsTable()
+#                 Point_obj.ComplaintId = c
+#                 Point_obj.Points = 50
+#                 Point_obj.save()
+#                 TimeLineTable.objects.create(ComplaintId=c, Status='Pending')
 
-                return Response(serializer.data,status=status.HTTP_201_CREATED)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#                 return Response(serializer.data,status=status.HTTP_201_CREATED)
+#             else:
+#                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             
-    def get(self, request, id):
-        user = UserTable.objects.get(LoginId_id=id) 
-        comp=ComplaintsTable.objects.filter(UserId_id=user)
-        serializer=ComplaintsSerializer(comp, many=True)
-        print("-------------------", serializer.data)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+#     def get(self, request, id):
+#         user = UserTable.objects.get(LoginId_id=id) 
+#         comp=ComplaintsTable.objects.filter(UserId_id=user)
+#         serializer=ComplaintsSerializer(comp, many=True)
+#         print("-------------------", serializer.data)
+#         return Response(serializer.data, status=status.HTTP_200_OK)
     
+
+# class SendComplaintAPI(APIView):
+
+#     # -------------------------------------------------
+#     # POST → Submit complaint
+#     # -------------------------------------------------
+#     def post(self, request, id):
+#         print(request.data)
+
+#         user = get_object_or_404(UserTable, LoginId_id=id)
+#         serializer = AddComplaintsSerializer(data=request.data)
+
+#         anonymous = request.data.get('is_anonymous', False)
+#         if isinstance(anonymous, str):
+#             anonymous = anonymous.lower() == 'true'
+
+#         is_first_complaint = not ComplaintsTable.objects.filter(
+#             UserId__LoginId_id=id
+#         ).exists()
+
+#         if serializer.is_valid():
+#             complaint = serializer.save(
+#                 UserId=user,
+#                 is_anonymous=anonymous
+#             )
+
+#             # Points logic
+#             points = 200 if is_first_complaint else 50
+#             PointsTable.objects.create(
+#                 ComplaintId=complaint,
+#                 Points=points
+#             )
+
+#             # Badge only for first complaint
+#             if is_first_complaint:
+#                 BadgeTable.objects.create(
+#                     ComplaintId=complaint,
+#                     Badge='First Report'
+#                 )
+
+#             TimeLineTable.objects.create(
+#                 ComplaintId=complaint,
+#                 Status='Pending'
+#             )
+
+#             return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#     # -------------------------------------------------
+#     # GET → View complaints
+#     # -------------------------------------------------
+#     def get(self, request, id):
+#         user = get_object_or_404(UserTable, LoginId_id=id)
+
+#         complaints = ComplaintsTable.objects.filter(UserId=user)
+#         serializer = ComplaintsSerializer(complaints, many=True)
+
+#         return Response(serializer.data, status=status.HTTP_200_OK)
+# ================================
+# AI IMAGE ANALYSIS + DEPARTMENT LOGIC
+# ================================
+
+
+
+# class SendComplaintAPI(APIView):
+
+#     # -------------------------------------------------
+#     # POST → Submit complaint
+#     # -------------------------------------------------
+#     def post(self, request, id):
+#         print(request.data)
+
+#         user = get_object_or_404(UserTable, LoginId_id=id)
+
+#         # 🚫 BLOCKED USER CHECK (ONLY ADDITION)
+#         if user.LoginId.UserType == 'Blocked':
+#             return Response(
+#                 {'error': 'You are blocked and cannot submit complaints'},
+#                 status=status.HTTP_403_FORBIDDEN
+#             )
+
+#         serializer = AddComplaintsSerializer(data=request.data)
+
+#         anonymous = request.data.get('is_anonymous', False)
+#         if isinstance(anonymous, str):
+#             anonymous = anonymous.lower() == 'true'
+
+#         is_first_complaint = not ComplaintsTable.objects.filter(
+#             UserId__LoginId_id=id
+#         ).exists()
+
+#         if serializer.is_valid():
+#             complaint = serializer.save(
+#                 UserId=user,
+#                 is_anonymous=anonymous
+#             )
+       
+
+#             # Points logic
+#             points = 200 if is_first_complaint else 50
+#             PointsTable.objects.create(
+#                 ComplaintId=complaint,
+#                 Points=points
+#             )
+
+#             # -------------------------------
+#             # 🔥 TOTAL POINTS RECALCULATION
+#             # -------------------------------
+#             from django.db.models import Sum
+
+#             total = PointsTable.objects.filter(
+#                 ComplaintId__UserId=user
+#             ).aggregate(total=Sum('Points'))['total']
+
+#             user.total_points = total if total is not None else 0
+#             user.save(update_fields=['total_points'])
+
+#             # Badge only for first complaint
+#             if is_first_complaint:
+#                 BadgeTable.objects.create(
+#                     ComplaintId=complaint,
+#                     Badge='First Report'
+#                 )
+
+#             TimeLineTable.objects.create(
+#                 ComplaintId=complaint,
+#                 Status='Pending'
+#             )
+
+#             return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # -------------------------------------------------
+    # GET → View complaints
+    # -------------------------------------------------
+    def get(self, request, id):
+        user = get_object_or_404(UserTable, LoginId_id=id)
+
+        complaints = ComplaintsTable.objects.filter(UserId=user)
+        serializer = ComplaintsSerializer(complaints, many=True)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 
 
 class ViewTimelineAPI(APIView):
@@ -660,18 +1003,33 @@ class SendAck(APIView):
         time_line_obj.save()
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
-class ViewAllcomplaintsAPI(APIView):
-    def get(self, request):
-        print("------------------------>", id)
-        comp = ComplaintsTable.objects.all() 
-        serializer=ComplaintsSerializer(comp, many=True)
-        print("------------------>", serializer.data)
-        if serializer.data:
+# class ViewAllcomplaintsAPI(APIView):
+#     def get(self, request):
+#         print("------------------------>", id)
+#         comp = ComplaintsTable.objects.all() 
+#         serializer=ComplaintsSerializer1(comp, many=True)
+#         print("------------------>", serializer.data)
+#         if serializer.data:
          
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        else:
+#             return Response(serializer.data, status=status.HTTP_200_OK)
+#         else:
            
-            return Response(serializer.data, status=status.HTTP_204_NO_CONTENT)
+#             return Response(serializer.data, status=status.HTTP_204_NO_CONTENT)
+
+class ViewAllcomplaintsAPI(APIView):
+
+    def get(self, request):
+        complaints = ComplaintsTable.objects.all().order_by('-SubmitDate')
+
+        if not complaints.exists():
+            return Response(
+                {"message": "No complaints found"},
+                status=status.HTTP_204_NO_CONTENT
+            )
+
+        serializer = ComplaintsSerializer1(complaints, many=True)
+        print(serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 class ComplaintLikeAPI(APIView):
     def post(self, request, lid):
@@ -740,3 +1098,354 @@ class ComplaintCommentAPI(APIView):
             },
             status=status.HTTP_201_CREATED
         )
+class ViewNotification(APIView):
+    def get(self, request, lid):
+        print("###############login#", lid)
+        userid=UserTable.objects.get(LoginId__id=lid)
+        notifications = Notification.objects.filter(ComplaintsId__UserId__LoginId__id=userid)
+        print(notifications)
+        serializer = NotificationSerializer(notifications, many=True)
+        print(serializer.data)
+
+        return Response({
+            "status": "success",
+            "data": serializer.data
+        })
+
+from django.views import View
+from django.shortcuts import render
+from django.db.models import Count
+from .models import ComplaintsTable
+
+
+class AdminDashboardView(View):
+    def get(self, request):
+
+        # BASIC COUNTS
+        total_complaints = ComplaintsTable.objects.count()
+        assignment_pending = ComplaintsTable.objects.filter(Status='pending').count()
+        resolved = ComplaintsTable.objects.filter(Status='resolved').count()
+        fake = ComplaintsTable.objects.filter(Status='fake').count()
+
+        # DEPARTMENT WORKLOAD (ONLY ASSIGNED)
+        dept_qs = (
+            ComplaintsTable.objects
+            .filter(DepartmentId__isnull=False)
+            .values('DepartmentId__DepartmentName')
+            .annotate(total=Count('id'))
+        )
+
+        dept_labels = []
+        dept_values = []
+
+        for row in dept_qs:
+            if row['DepartmentId__DepartmentName']:
+                dept_labels.append(row['DepartmentId__DepartmentName'])
+                dept_values.append(row['total'])
+
+        context = {
+            'total_complaints': total_complaints,
+            'assignment_pending': assignment_pending,
+            'resolved': resolved,
+            'fake': fake,
+            'dept_labels': dept_labels,
+            'dept_values': dept_values,
+        }
+
+        return render(
+            request,
+            'Administration/admin_dashboard.html',
+            context
+        )
+
+class NotificationListAPI(APIView):
+    def get(self, request, lid):
+        try:
+            # Filter notifications for the specific user (lid)
+            notifications = Notification.objects.filter(
+                ComplaintsId__UserId__LoginId__id=lid
+            ).order_by('-Date')
+            
+            serializer = NotificationSerializer(notifications, many=True)
+            return Response(
+                {"status": "success", "data": serializer.data},
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return Response(
+                {"status": "error", "message": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+# =====================================================
+# IMAGGA IMAGE TAGGING
+# =====================================================
+
+def get_image_labels(image_path):
+    """
+    Send image to Imagga API and return image tags
+    """
+
+    print("🔍 Sending image to Imagga API...")
+
+    with open(image_path, "rb") as image_file:
+        response = requests.post(
+            IMAGGA_ENDPOINT,
+            files={"image": image_file},
+            auth=HTTPBasicAuth(IMAGGA_API_KEY, IMAGGA_API_SECRET),
+            timeout=20
+        )
+
+    response.raise_for_status()
+    data = response.json()
+
+    tags = data.get("result", {}).get("tags", [])
+
+    # Return top 10 labels
+    return [tag["tag"]["en"].lower() for tag in tags[:10]]
+
+
+# =====================================================
+# CATEGORY DETECTION
+# =====================================================
+
+def detect_category_from_labels(labels):
+    """
+    Map Imagga tags to complaint category
+    """
+
+    if any(word in labels for word in [
+        "water"
+    ]):
+        return "Water Leakage"
+
+    if any(word in labels for word in [
+        "garbage", "waste", "trash", "dump", "bin"
+    ]):
+        return "Waste Dumping"
+
+    if any(word in labels for word in [
+        "light", "lamp", "electricity", "lighting"
+    ]):
+        return "Street Light Issue"
+
+    if any(word in labels for word in [
+        "road", "pothole", "asphalt", "crack", "street"
+    ]):
+        return "Road Damage"
+
+    return "Other"
+
+
+# =====================================================
+# SEND COMPLAINT API
+# =====================================================
+
+class SendComplaintAPI(APIView):
+
+    def post(self, request, id):
+
+        print("📥 Incoming complaint:", request.data)
+
+        user = get_object_or_404(UserTable, LoginId_id=id)
+        serializer = AddComplaintsSerializer(data=request.data)
+
+        if serializer.is_valid():
+            complaint = serializer.save(UserId=user)
+
+            # =====================================
+            # AUTO CATEGORY FROM IMAGE (IMAGGA)
+            # =====================================
+            if complaint.Image:
+                try:
+                    labels = get_image_labels(complaint.Image.path)
+                    category = detect_category_from_labels(labels)
+
+                    print("✅ Imagga labels:", labels)
+                    print("✅ Detected category:", category)
+
+                    complaint.Category = category
+                    complaint.save(update_fields=["Category"])
+
+                except Exception as e:
+                    print("❌ Imagga error:", e)
+
+            return Response(
+                {
+                    "message": "Complaint submitted successfully",
+                    "category": complaint.Category
+                },
+                status=status.HTTP_201_CREATED
+            )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+# //////////////////////////////////////////////////////////////////////////////
+
+class SendComplaintCAPI(APIView):
+
+
+    # -------------------------------------------------
+    # POST → Submit complaint
+    # -------------------------------------------------
+    def post(self, request, id):
+        category_map = {
+            "Water Leakage": ["water"],
+            "Road Damage": ["road", "pothole"],
+            "Waste Dumping": ["waste", "garbage"],
+            "Street Light Issue": ["street", "light", "electrical"],
+        }
+
+        print("📥 Incoming complaint:", request.data)
+
+        user = get_object_or_404(UserTable, LoginId_id=id)
+
+        # 🚫 BLOCKED USER CHECK
+        if user.LoginId.UserType == 'Blocked':
+            return Response(
+                {'error': 'You are blocked and cannot submit complaints'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        serializer = AddComplaintsSerializer(data=request.data)
+
+        # -----------------------------
+        # Anonymous logic
+        # -----------------------------
+        anonymous = request.data.get('is_anonymous', False)
+        if isinstance(anonymous, str):
+            anonymous = anonymous.lower() == 'true'
+
+        # -----------------------------
+        # First complaint check
+        # -----------------------------
+        is_first_complaint = not ComplaintsTable.objects.filter(
+            UserId__LoginId_id=id
+        ).exists()
+
+        if serializer.is_valid():
+            complaint = serializer.save(
+                UserId=user,
+                is_anonymous=anonymous
+            )
+
+            # =====================================
+            # 🧠 AUTO CATEGORY FROM IMAGE (IMAGGA)
+            # =====================================
+            if complaint.Image:
+                try:
+                    # labels = get_image_labels(complaint.Image.path)
+                    # category = detect_category_from_labels(labels)
+
+                    # print("✅ Imagga labels:", labels)
+                    # print("✅ Detected category:", category)
+
+                    dept_obj = None
+                    cat = request.POST['Category']
+                    if cat == "Road Damage":
+                        dept_obj = DepartmentsTable.objects.get(DepartmentName='Roads And Public Works')
+                        
+                    elif cat == "Water Leakage":
+                        dept_obj = DepartmentsTable.objects.get(DepartmentName='Water Authority')
+                        
+                    elif cat == "Waste Dumping":
+                        dept_obj = DepartmentsTable.objects.get(DepartmentName='Waste Management')
+                        
+                    elif cat == "Street Light":
+                        dept_obj = DepartmentsTable.objects.get(DepartmentName='Electrical Department')
+                        
+
+                    # for key, keywords in category_map.items():
+                    #     if category == key:
+                    #         for word in keywords:
+                    #             dept_obj = DepartmentsTable.objects.filter(
+                    #                 DepartmentName__icontains=word
+                    #             ).first()
+                    #             if dept_obj:
+                    #                 break                    
+                    
+                    print("---------------->", dept_obj)
+                    if dept_obj:
+                        complaint.DepartmentId = dept_obj
+                        complaint.save()
+                    else:
+                        print("⚠️ No matching department found for:", category)                    
+
+                except Exception as e:
+                    print("❌ Imagga error:", e)
+
+            # -----------------------------
+            # Points logic
+            # -----------------------------
+            points = 200 if is_first_complaint else 50
+            PointsTable.objects.create(
+                ComplaintId=complaint,
+                Points=points
+            )
+
+            # -----------------------------
+            # 🔥 TOTAL POINTS RECALCULATION
+            # -----------------------------
+            from django.db.models import Sum
+
+            total = PointsTable.objects.filter(
+                ComplaintId__UserId=user
+            ).aggregate(total=Sum('Points'))['total']
+
+            user.total_points = total if total is not None else 0
+            user.save(update_fields=['total_points'])
+
+            # -----------------------------
+            # Badge only for first complaint
+            # -----------------------------
+            if is_first_complaint:
+                BadgeTable.objects.create(
+                    ComplaintId=complaint,
+                    Badge='First Report'
+                )
+
+            # -----------------------------
+            # Timeline entry
+            # -----------------------------
+            TimeLineTable.objects.create(
+                ComplaintId=complaint,
+                Status='Pending'
+            )
+
+            return Response(
+                {
+                    "message": "Complaint submitted successfully",
+                    "category": complaint.Category,
+                    "points_awarded": points
+                },
+                status=status.HTTP_201_CREATED
+            )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # -------------------------------------------------
+    # GET → View complaints
+    # -------------------------------------------------
+    def get(self, request, id):
+        user = get_object_or_404(UserTable, LoginId_id=id)
+
+        complaints = ComplaintsTable.objects.filter(UserId=user)
+        serializer = ComplaintsSerializer(complaints, many=True)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+class ViewProfileAPI(APIView):
+    def get(self, request,id):
+        # userid=UserTable.objects.get(LoginId__id=id)
+        profile = UserTable.objects.filter(LoginId__id=id)
+        print(profile)
+        serializer = UserSerializer(profile, many=True)
+        print(serializer.data)
+
+        return Response({
+            "status": "success",
+            "data": serializer.data
+        })

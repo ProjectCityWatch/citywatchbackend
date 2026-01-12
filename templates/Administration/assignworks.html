@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -6,55 +6,155 @@
     <title>Assign Works</title>
 
     <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Inter", "Segoe UI", Arial, sans-serif;
+        }
+
         body {
-            font-family: Arial, sans-serif;
+            background: #020617;
+            color: #e5e7eb;
+            padding: 30px;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 24px;
+            font-size: 26px;
+            font-weight: 600;
+        }
+
+        /* ================= FILTER BAR ================= */
+        form[method="get"] {
+            background: #0b1220;
+            padding: 18px;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        label {
+            font-weight: 500;
+            color: #cbd5f5;
+        }
+
+        select {
+            padding: 9px 12px;
+            font-size: 14px;
+            border-radius: 8px;
+            background: #020617;
+            border: 1px solid #334155;
+            color: #e5e7eb;
+        }
+
+        button {
+            padding: 9px 18px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 8px;
+            background: #2563eb;
+            border: none;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        /* ================= TABLE ================= */
+        .table-wrapper {
+            border: 1px solid #1e293b;
+            border-radius: 14px;
+            overflow-x: auto;
+            background: #020617;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
+            min-width: 1500px;
         }
 
-        th, td {
-            padding: 10px;
-            border: 1px solid #000;
-            text-align: center;
-            vertical-align: top;
+        thead {
+            background: #020617;
+            border-bottom: 2px solid #334155;
         }
 
         th {
-            background-color: #f2f2f2;
+            padding: 14px;
+            font-size: 14px;
+            color: #93c5fd;
+            border-right: 1px solid #1e293b;
+            white-space: nowrap;
         }
 
-        iframe {
-            border: 0;
+        td {
+            padding: 14px;
+            font-size: 14px;
+            border-right: 1px solid #1e293b;
+            vertical-align: top;
+            text-align: center;
+        }
+
+        tbody tr:nth-child(odd) { background: #020617; }
+        tbody tr:nth-child(even) { background: #0b1220; }
+        tbody tr:hover { background: #0f172a; }
+
+        td:nth-child(4) {
+            text-align: left;
+            line-height: 1.6;
+        }
+
+        img, iframe {
+            border-radius: 8px;
+            border: 1px solid #334155;
         }
 
         a {
+            color: #60a5fa;
+            font-weight: 500;
             text-decoration: none;
-            color: blue;
-            font-weight: bold;
         }
 
-        .changed {
-            color: orange;
-            font-weight: bold;
-            font-size: 12px;
-        }
+        a:hover { text-decoration: underline; }
 
         .not-assigned {
-            color: rgb(232, 16, 63);
-            font-weight: bold;
+            color: #fb7185;
+            font-weight: 600;
         }
+
+        .status {
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .Assigned { background: #14532d; color: #bbf7d0; }
+        .InProgress { background: #1e3a8a; color: #bfdbfe; }
+        .Resolved { background: #4c1d95; color: #ddd6fe; }
+        .Fake { background: #7f1d1d; color: #fecaca; }
+
+        td:last-child form { margin-bottom: 6px; }
+        td:last-child button { width: 100%; }
     </style>
 </head>
 
 <body>
 
-<h2 align="center">Assign Works</h2>
+<h2>Assign Works</h2>
 
-<form method="get" style="margin-bottom: 20px; text-align: center;">
-    <label>Department:</label>
+<form method="get">
+    <label>Department</label>
     <select name="department">
         <option value="all">All</option>
         {% for d in departments %}
@@ -65,100 +165,427 @@
         {% endfor %}
     </select>
 
-    &nbsp;&nbsp;
-
-    <label>Status:</label>
+    <label>Status</label>
     <select name="status">
         <option value="all">All</option>
-        <option value="assigned"
-            {% if selected_status == "assigned" %}selected{% endif %}>
-            Assigned
-        </option>
-        <option value="not_assigned"
-            {% if selected_status == "not_assigned" %}selected{% endif %}>
-            Not Assigned
-        </option>
+        <option value="assigned" {% if selected_status == "assigned" %}selected{% endif %}>Assigned</option>
+        <option value="not_assigned" {% if selected_status == "not_assigned" %}selected{% endif %}>Not Assigned</option>
+        <option value="fake" {% if selected_status == "fake" %}selected{% endif %}>Fake Complaints</option>
     </select>
-
-    &nbsp;&nbsp;
 
     <button type="submit">Filter</button>
 </form>
 
+<div class="table-wrapper">
 <table>
-    <tr>
-        <th>User</th>
-        <th>Department</th>
-        <th>Category</th>
-        <th>Description</th>
-        <th>Priority</th>
-        <th>Image</th>
-        <th>Location</th>
-        <th>Map View</th>
-        <th>Requested Date</th>
-        <th>Actions</th>
-    </tr>
+    <thead>
+        <tr>
+            <th>User</th>
+            <th>Department</th>
+            <th>Category</th>
+            <th>Description</th>
+            <th>Priority</th>
+            <th>Image</th>
+            <th>Location</th>
+            <th>Map</th>
+            <th>Requested Date</th>
+            <th>Action</th>
+        </tr>
+    </thead>
 
+    <tbody>
     {% for i in val %}
     <tr>
-        <form method="post" action="{% url 'submit_work' i.id %}">
-            {% csrf_token %}
+        <td>{{ i.UserId.Name }}</td>
+        <td>{{ i.DepartmentId.DepartmentName }}</td>
+        <td>{{ i.Category }}</td>
+        <td>{{ i.Description }}</td>
+        <td>{{ i.Priority }}</td>
 
-            <td>{{ i.UserId.Name }}</td>
-            <td>{{ i.DepartmentId.DepartmentName }}</td>
-            <td>{{ i.Category }}</td>
-            <td>{{ i.Description }}</td>
-            <td>{{ i.Priority }}</td>
+        <td>
+            {% if i.Image %}
+                <img src="{{ i.Image.url }}" width="110" height="90">
+            {% else %} No Image {% endif %}
+        </td>
 
-            <td>
-                {% if i.Image %}
-                    <img src="{{ i.Image.url }}" width="100" height="80">
-                {% else %}
-                    No Image
-                {% endif %}
-            </td>
+        <td>
+            {{ i.Latitude }}, {{ i.Longitude }} <br>
+            <a href="https://www.google.com/maps?q={{ i.Latitude }},{{ i.Longitude }}" target="_blank">Open</a>
+        </td>
 
-            <td>
-                {{ i.Latitude }}, {{ i.Longitude }} <br>
-                <a href="https://www.google.com/maps?q={{ i.Latitude }},{{ i.Longitude }}" target="_blank">
-                    Open in Maps
-                </a>
-            </td>
+        <td>
+            <iframe width="250" height="170"
+                src="https://www.google.com/maps?q={{ i.Latitude }},{{ i.Longitude }}&output=embed"
+                loading="lazy">
+            </iframe>
+        </td>
 
-            <td>
-                <iframe width="250" height="180"
-                        src="https://www.google.com/maps?q={{ i.Latitude }},{{ i.Longitude }}&output=embed">
-                </iframe>
-            </td>
+        <td>
+            {% if not i.EndingDate %}
+                <span class="not-assigned">Not Assigned</span>
+            {% else %}
+                {{ i.EndingDate }}
+            {% endif %}
+        </td>
 
-            <!-- 🔥 REQUESTED DATE COLUMN (FULL & FINAL) -->
-           <td>
-    {% if not i.EndingDate %}
-        <span style="color: rgb(232, 16, 63); font-weight: bold;">
-            Date not Assigned
-        </span>
-    {% else %}
-        {{ i.EndingDate }}
-    {% endif %}
-</td>
+        <td>
+            {% if i.Status == 'fake' %}
+                <span class="status Fake">Fake</span>
 
+            {% elif i.Status == 'Assigned' %}
+                <span class="status Assigned">Assigned</span>
 
-            <td>
-                {% if i.Status == 'Assigned' %}
-                    <span style="color: green; font-weight: bold;">Assigned</span>
-                {% elif i.Status == 'In Progress' %}
-                    <span style="color: rgb(134, 154, 46); font-weight: bold;">In Progress</span>
-                {% elif i.Status == 'Resolved' %}
-                    <span style="color: rgb(75, 42, 137); font-weight: bold;">Resolved</span>
-                {% else %}
+            {% elif i.Status == 'In Progress' %}
+                <span class="status InProgress">In Progress</span>
+
+            {% elif i.Status == 'Resolved' %}
+                <span class="status Resolved">Resolved</span>
+
+            {% else %}
+                <form method="post" action="{% url 'submit_work' i.id %}">
+                    {% csrf_token %}
                     <button type="submit">Assign Work</button>
-                {% endif %}
-            </td>
+                </form>
 
-        </form>
+                <form method="post" action="{% url 'mark_fake' i.id %}">
+                    {% csrf_token %}
+                    <button type="submit" style="background:#7f1d1d;">Mark Fake</button>
+                </form>
+            {% endif %}
+        </td>
     </tr>
     {% endfor %}
+    </tbody>
 </table>
+</div>
+
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assign Works</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Inter", "Segoe UI", Arial, sans-serif;
+        }
+
+        body {
+            background: #020617;
+            color: #e5e7eb;
+            padding: 30px;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 24px;
+            font-size: 26px;
+            font-weight: 600;
+        }
+
+        /* ================= FILTER BAR ================= */
+        form[method="get"] {
+            background: #0b1220;
+            padding: 18px;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        label {
+            font-weight: 500;
+            color: #cbd5f5;
+        }
+
+        select {
+            padding: 9px 12px;
+            font-size: 14px;
+            border-radius: 8px;
+            background: #020617;
+            border: 1px solid #334155;
+            color: #e5e7eb;
+        }
+
+        button {
+            padding: 9px 18px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 8px;
+            background: #2563eb;
+            border: none;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        /* ================= TABLE ================= */
+        .table-wrapper {
+            border: 1px solid #1e293b;
+            border-radius: 14px;
+            overflow-x: auto;
+            background: #020617;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1500px;
+        }
+
+        thead {
+            background: #020617;
+            border-bottom: 2px solid #334155;
+        }
+
+        th {
+            padding: 14px;
+            font-size: 14px;
+            color: #93c5fd;
+            border-right: 1px solid #1e293b;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 14px;
+            font-size: 14px;
+            border-right: 1px solid #1e293b;
+            vertical-align: top;
+            text-align: center;
+        }
+
+        tbody tr:nth-child(odd) { background: #020617; }
+        tbody tr:nth-child(even) { background: #0b1220; }
+        tbody tr:hover { background: #0f172a; }
+
+        td:nth-child(4) {
+            text-align: left;
+            line-height: 1.6;
+        }
+
+        img, iframe {
+            border-radius: 8px;
+            border: 1px solid #334155;
+        }
+
+        a {
+            color: #60a5fa;
+            font-weight: 500;
+            text-decoration: none;
+        }
+
+        a:hover { text-decoration: underline; }
+
+        .not-assigned {
+            color: #fb7185;
+            font-weight: 600;
+        }
+
+        .status {
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .Assigned { background: #14532d; color: #bbf7d0; }
+        .InProgress { background: #1e3a8a; color: #bfdbfe; }
+        .Resolved { background: #4c1d95; color: #ddd6fe; }
+        .Fake { background: #7f1d1d; color: #fecaca; }
+
+        td:last-child form { margin-bottom: 6px; }
+        td:last-child button { width: 100%; }
+
+        /* ===== MODAL ===== */
+        #confirmFakeModal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(2,6,23,0.85);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #confirmFakeModal .modal-box {
+            background: #0b1220;
+            border: 1px solid #1e293b;
+            border-radius: 14px;
+            padding: 24px;
+            width: 360px;
+            text-align: center;
+        }
+
+        #confirmFakeModal h3 {
+            margin-bottom: 12px;
+        }
+
+        #confirmFakeModal p {
+            color: #cbd5f5;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>Assign Works</h2>
+
+<form method="get">
+    <label>Department</label>
+    <select name="department">
+        <option value="all">All</option>
+        {% for d in departments %}
+            <option value="{{ d.id }}"
+                {% if selected_department == d.id|stringformat:"s" %}selected{% endif %}>
+                {{ d.DepartmentName }}
+            </option>
+        {% endfor %}
+    </select>
+
+    <label>Status</label>
+    <select name="status">
+        <option value="all">All</option>
+        <option value="assigned" {% if selected_status == "assigned" %}selected{% endif %}>Assigned</option>
+        <option value="not_assigned" {% if selected_status == "not_assigned" %}selected{% endif %}>Not Assigned</option>
+        <option value="fake" {% if selected_status == "fake" %}selected{% endif %}>Fake Complaints</option>
+    </select>
+
+    <button type="submit">Filter</button>
+</form>
+
+<div class="table-wrapper">
+<table>
+    <thead>
+        <tr>
+            <th>User</th>
+            <th>Department</th>
+            <th>Category</th>
+            <th>Description</th>
+            <th>Priority</th>
+            <th>Image</th>
+            <th>Location</th>
+            <th>Map</th>
+            <th>Requested Date</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+
+    <tbody>
+    {% for i in val %}
+    <tr>
+        <td>{{ i.UserId.Name }}</td>
+        <td>{{ i.DepartmentId.DepartmentName }}</td>
+        <td>{{ i.Category }}</td>
+        <td>{{ i.Description }}</td>
+        <td>{{ i.Priority }}</td>
+
+        <td>
+            {% if i.Image %}
+                <img src="{{ i.Image.url }}" width="110" height="90">
+            {% else %} No Image {% endif %}
+        </td>
+
+        <td>
+            {{ i.Latitude }}, {{ i.Longitude }} <br>
+            <a href="https://www.google.com/maps?q={{ i.Latitude }},{{ i.Longitude }}" target="_blank">Open</a>
+        </td>
+
+        <td>
+            <iframe width="250" height="170"
+                src="https://www.google.com/maps?q={{ i.Latitude }},{{ i.Longitude }}&output=embed"
+                loading="lazy">
+            </iframe>
+        </td>
+
+        <td>
+            {% if not i.EndingDate %}
+                <span class="not-assigned">Not Assigned</span>
+            {% else %}
+                {{ i.EndingDate }}
+            {% endif %}
+        </td>
+
+        <td>
+            {% if i.Status == 'fake' %}
+                <span class="status Fake">Fake</span>
+
+            {% elif i.Status == 'Assigned' %}
+                <span class="status Assigned">Assigned</span>
+
+            {% elif i.Status == 'In Progress' %}
+                <span class="status InProgress">In Progress</span>
+
+            {% elif i.Status == 'Resolved' %}
+                <span class="status Resolved">Resolved</span>
+
+            {% else %}
+                <form method="post" action="{% url 'submit_work' i.id %}">
+                    {% csrf_token %}
+                    <button type="submit">Assign Work</button>
+                </form>
+
+                <form method="post" action="{% url 'mark_fake' i.id %}" class="fake-form">
+                    {% csrf_token %}
+                    <button type="button" style="background:#7f1d1d;" onclick="openFakeModal(this)">
+                        Mark Fake
+                    </button>
+                </form>
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+
+<!-- ===== CONFIRM FAKE MODAL ===== -->
+<div id="confirmFakeModal">
+    <div class="modal-box">
+        <h3>Confirm Action</h3>
+        <p>Are you sure you want to mark this complaint as <b style="color:#fb7185;">Fake</b>?</p>
+
+        <div style="display:flex; gap:12px;">
+            <button style="flex:1; background:#334155;" onclick="closeFakeModal()">Cancel</button>
+            <button id="confirmFakeBtn" style="flex:1; background:#7f1d1d;">Yes, Mark Fake</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentFakeForm = null;
+
+    function openFakeModal(btn) {
+        currentFakeForm = btn.closest('form');
+        document.getElementById('confirmFakeModal').style.display = 'flex';
+    }
+
+    function closeFakeModal() {
+        currentFakeForm = null;
+        document.getElementById('confirmFakeModal').style.display = 'none';
+    }
+
+    document.getElementById('confirmFakeBtn').onclick = function () {
+        if (currentFakeForm) {
+            currentFakeForm.submit();
+        }
+    };
+</script>
 
 </body>
 </html>

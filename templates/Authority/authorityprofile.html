@@ -4,31 +4,127 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Authority Profile</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Inter", "Segoe UI", Arial, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: #020617;
+            color: #e5e7eb;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 30px;
+        }
+
+        /* Card */
+        .card {
+            width: 100%;
+            max-width: 520px;
+            background: rgba(255, 255, 255, 0.045);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow:
+                0 10px 30px rgba(0, 0, 0, 0.55),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 28px;
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #cbd5f5;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(2, 6, 23, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            color: #e5e7eb;
+            font-size: 14px;
+        }
+
+        textarea {
+            resize: vertical;
+            line-height: 1.5;
+        }
+
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #60a5fa;
+            background: rgba(2, 6, 23, 0.95);
+        }
+
+        /* Submit button */
+        input[type="submit"] {
+            margin-top: 10px;
+            padding: 12px;
+            border-radius: 8px;
+            background: #2563eb;
+            border: none;
+            color: white;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        input[type="submit"]:hover {
+            background: #1d4ed8;
+        }
+    </style>
 </head>
+
 <body>
 
-<h1>Authority Profile</h1>
+<div class="card">
+    <h1>Authority Profile</h1>
 
-<form method="post">
-     {% csrf_token %}
-    <label for="department">Department Name</label><br>
-    <input type="text" id="department" name="DepartmentName" value="{{ val.DepartmentName }}"><br><br>
+    <form method="post">
+        {% csrf_token %}
 
-    <label for="email">Email</label><br>
-    <input type="email" id="email" name="Email" value="{{ val.Email}}"><br><br>
+        <label for="department">Department Name</label>
+        <input type="text" id="department" name="DepartmentName" value="{{ val.DepartmentName }}">
 
-    <label for="head">Head Name</label><br>
-    <input type="text" id="head" name="HeadName" value="{{ val.HeadName }}"><br><br>
+        <label for="email">Email</label>
+        <input type="email" id="email" name="Email" value="{{ val.Email }}">
 
-    <label for="address">Address</label><br>
-    <textarea id="address" name="Address" rows="3" cols="40"> {{ val.Address }}</textarea><br><br>
+        <label for="head">Head Name</label>
+        <input type="text" id="head" name="HeadName" value="{{ val.HeadName }}">
 
-    <label for="contact">Contact Info</label><br>
-    <input type="text" id="contact" name="ContactInfo" value="{{ val.ContactInfo}}"><br><br>
+        <label for="address">Address</label>
+        <textarea id="address" name="Address" rows="3" cols="40">{{ val.Address }}</textarea>
 
-    <input type="submit" value="Update Profile">
-</form>
+        <label for="contact">Contact Info</label>
+        <input type="text" id="contact" name="ContactInfo" value="{{ val.ContactInfo }}">
 
-<br>
+        <input type="submit" value="Update Profile">
+    </form>
+</div>
+
 </body>
 </html>

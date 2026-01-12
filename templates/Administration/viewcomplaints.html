@@ -4,42 +4,134 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Complaints</title>
+
+    <!-- Internal CSS -->
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Inter", "Segoe UI", sans-serif;
+        }
+
+        body {
+            background: #020617;
+            color: #e5e7eb;
+            padding: 40px;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 25px;
+            letter-spacing: 0.5px;
+        }
+
+        /* Table wrapper for scroll */
+        .table-wrapper {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 14px;
+            overflow-x: auto;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1200px;
+        }
+
+        thead {
+            background: rgba(255,255,255,0.08);
+        }
+
+        th, td {
+            padding: 14px 16px;
+            font-size: 13px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            color: #93c5fd;
+            font-weight: 600;
+            letter-spacing: 0.6px;
+            white-space: nowrap;
+        }
+
+        tr {
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+
+        tbody tr:hover {
+            background: rgba(255,255,255,0.04);
+        }
+
+        /* Description handling */
+        td:nth-child(5) {
+            max-width: 260px;
+            line-height: 1.6;
+        }
+
+        /* Image styling */
+        img {
+            width: 90px;
+            height: auto;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+
+        /* Status badge feel (no logic change) */
+        td:nth-child(9) {
+            font-weight: 600;
+            letter-spacing: 0.4px;
+        }
+    </style>
 </head>
+
 <body>
 
 <h1>User Complaints</h1>
 
-<table border="1" cellpadding="5" cellspacing="0">
-    <tr>
-        <th>User Name</th>
-        <th>Email</th>
-        <th>Phone</th>
-        <th>Category</th>
-        <th>Description</th>
-        <th>Priority</th>
-        <th>Image</th>
-        <th>Location</th>
-        <th>Status</th>
-        <th>Submit Date</th>
-        <th>Requested Date</th>
-        
-    </tr>
-    {% for i in val %} 
-    <tr>
-        <td>{{ i.UserId.Name }}</td>
-        <td>{{ i.UserId.Email }}</td>
-        <td>{{ i.UserId.PhoneNo }}</td>
-        <td>{{ i.Category }}</td>
-        <td>{{ i.Description }}</td>
-        <td>{{ i.Priority }}</td>
-        <td><img src="{{ Image }}" alt="Image" width="100"></td>
-        <td>{{ i.Location }}</td>
-        <td>{{ i.Status }}</td>
-        <td>{{ i.SubmitDate }}</td>
-        <td>{{ i.DeadlineDate }}</td>
-    </tr>
-    {% endfor %}
-</table>
+<div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th>User Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Category</th>
+                <th>Description</th>
+                <th>Priority</th>
+                <th>Image</th>
+                <th>Location</th>
+                <th>Status</th>
+                <th>Submit Date</th>
+                <th>Requested Date</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for i in val %}
+            <tr>
+                <td>{{ i.UserId.Name }}</td>
+                <td>{{ i.UserId.Email }}</td>
+                <td>{{ i.UserId.PhoneNo }}</td>
+                <td>{{ i.Category }}</td>
+                <td>{{ i.Description }}</td>
+                <td>{{ i.Priority }}</td>
+                <td><img src="{{ Image }}" alt="Image"></td>
+                <td>{{ i.Location }}</td>
+                <td>{{ i.Status }}</td>
+                <td>{{ i.SubmitDate }}</td>
+                <td>{{ i.DeadlineDate }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 
 <br>
 
