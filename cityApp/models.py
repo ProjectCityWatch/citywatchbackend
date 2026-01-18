@@ -69,6 +69,7 @@ class AssignWork(models.Model):
 class Notification(models.Model):
     ComplaintsId=models.ForeignKey(ComplaintsTable,on_delete=models.CASCADE,null=True,blank=True)
     Date = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, null=True, blank=True)
 
 class ComplaintLike(models.Model):
     ComplaintId = models.ForeignKey(ComplaintsTable,on_delete=models.CASCADE, related_name="likes")

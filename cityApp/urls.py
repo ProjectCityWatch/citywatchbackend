@@ -53,6 +53,7 @@ urlpatterns = [
     path('ComplaintCommentAPI/<int:lid>',ComplaintCommentAPI.as_view(),name='ComplaintCommentAPI'),
 
     path('api/notifications/<int:lid>/', NotificationListAPI.as_view(), name='api_notifications'),
-    path('viewprofile/<int:id>', ViewProfileAPI.as_view(), name='viewprofile')
-
+    path('viewprofile/<int:id>', ViewProfileAPI.as_view(), name='viewprofile'),
+    path("UserPointsAPI/<int:login_id>/", UserPointsAPI.as_view()),
+    path('leaderboard/<int:user_id>/', LeaderboardAPI.as_view()),
 ]

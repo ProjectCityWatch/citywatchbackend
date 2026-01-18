@@ -136,3 +136,37 @@ class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = ['id', 'Description','comp_id', 'Date', 'status']        
+
+
+# serializers.py
+from rest_framework import serializers
+from django.db.models import Count, Q
+from .models import UserTable, ComplaintsTable
+
+
+class LeaderboardSerializer(serializers.ModelSerializer):
+    reported = serializers.SerializerMethodField()
+    resolved = serializers.SerializerMethodField()
+    rank = serializers.IntegerField()
+    points = serializers.IntegerField(source='total_points')
+
+    class Meta:
+        model = UserTable
+        fields = [
+            'id',
+            'Name',
+            'points',
+            'rank',
+            'reported',
+            'resolved',
+        ]
+
+    def get_reported(self, obj):
+        return ComplaintsTable.objects.filter(UserId=obj).count()
+
+    def get_resolved(self, obj):
+        return ComplaintsTable.objects.filter(
+            UserId=obj,
+            Status__iexact="resolved"
+        ).count()
+

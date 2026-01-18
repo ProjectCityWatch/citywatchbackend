@@ -42,6 +42,38 @@ def recalculate_user_points(user):
     user.total_points = total if total is not None else 0
     user.save()
 
+BADGE_DEFINITION = {
+    "First Report": {
+        "subtitle": "Earned for submitting your very first complaint.",
+        "points": 200
+    },
+    "First Problem Resolved": {
+        "subtitle": "Awarded when your issue gets resolved.",
+        "points": 200
+    },
+    "Pothole Pro": {
+        "subtitle": "Recognized for reporting multiple road damage issues.",
+        "points": 200
+    },
+    "Clean City Champ": {
+        "subtitle": "For actively reporting cleanliness and waste issues.",
+        "points": 200
+    },
+    "Water Watcher": {
+        "subtitle": "Awarded for reporting water leakage or wastage.",
+        "points": 200
+    },
+    "Streetlight Saver": {
+        "subtitle": "Earned by reporting faulty or broken streetlights.",
+        "points": 200
+    },
+    "Local Hero": {
+        "subtitle": "For making a strong positive impact in your locality.",
+        "points": 500
+    }
+}
+
+
 
 # --- Login ---
 class LoginView(View):
@@ -1016,10 +1048,27 @@ class SendAck(APIView):
            
 #             return Response(serializer.data, status=status.HTTP_204_NO_CONTENT)
 
-class ViewAllcomplaintsAPI(APIView):
+# class ViewAllcomplaintsAPI(APIView):
 
+#     def get(self, request):
+#         complaints = ComplaintsTable.objects.all().order_by('-SubmitDate')
+
+#         if not complaints.exists():
+#             return Response(
+#                 {"message": "No complaints found"},
+#                 status=status.HTTP_204_NO_CONTENT
+#             )
+
+#         serializer = ComplaintsSerializer1(complaints, many=True)
+#         print(serializer.data)
+#         return Response(serializer.data, status=status.HTTP_200_OK)
+from django.db.models import Count
+
+class ViewAllcomplaintsAPI(APIView):
     def get(self, request):
-        complaints = ComplaintsTable.objects.all().order_by('-SubmitDate')
+        complaints = ComplaintsTable.objects.annotate(
+            total_likes=Count("likes")
+        ).order_by('-SubmitDate')
 
         if not complaints.exists():
             return Response(
@@ -1028,7 +1077,6 @@ class ViewAllcomplaintsAPI(APIView):
             )
 
         serializer = ComplaintsSerializer1(complaints, many=True)
-        print(serializer.data)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class ComplaintLikeAPI(APIView):
@@ -1167,6 +1215,7 @@ class NotificationListAPI(APIView):
             ).order_by('-Date')
             
             serializer = NotificationSerializer(notifications, many=True)
+            print('------------->', serializer.data)
             return Response(
                 {"status": "success", "data": serializer.data},
                 status=status.HTTP_200_OK
@@ -1449,3 +1498,168 @@ class ViewProfileAPI(APIView):
             "status": "success",
             "data": serializer.data
         })
+    
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+from django.db.models import Sum
+
+from .models import (
+    UserTable,
+    BadgeTable,
+    PointsTable
+)
+
+class UserPointsAPI(APIView):
+
+    def get(self, request, login_id):
+
+        # -----------------------------------
+        # 1️⃣ Get user
+        # -----------------------------------
+        user = get_object_or_404(UserTable, LoginId_id=login_id)
+
+        # -----------------------------------
+        # 2️⃣ SUMMARY DATA
+        # -----------------------------------
+        total_points = user.total_points
+
+        badges_earned = BadgeTable.objects.filter(
+            ComplaintId__UserId=user
+        ).count()
+
+        # Rank calculation
+        ranked_users = list(
+            UserTable.objects.order_by("-total_points")
+            .values_list("id", flat=True)
+        )
+        user_rank = ranked_users.index(user.id) + 1 if user.id in ranked_users else None
+
+        # -----------------------------------
+        # 3️⃣ BADGES GRID
+        # -----------------------------------
+        earned_badges = set(
+            BadgeTable.objects.filter(
+                ComplaintId__UserId=user
+            ).values_list("Badge", flat=True)
+        )
+
+        badges = []
+        for title, data in BADGE_DEFINITION.items():
+            badges.append({
+                "title": title,
+                "subtitle": data["subtitle"],
+                "points": data["points"],
+                "is_earned": title in earned_badges
+            })
+
+        # -----------------------------------
+        # 4️⃣ RECENT ACTIVITIES
+        # -----------------------------------
+        points_logs = PointsTable.objects.filter(
+            ComplaintId__UserId=user
+        ).order_by("-CreatedDate")[:10]
+
+        def activity_title(p):
+            if p.Points >= 200:
+                return "Badge Earned"
+            if p.Points == 100:
+                return "Complaint Resolved"
+            return "Complaint Reported"
+
+        activities = [
+            {
+                "title": activity_title(p),
+                "points": p.Points,
+                "created_at": p.CreatedDate
+            }
+            for p in points_logs
+        ]
+
+        # -----------------------------------
+        # 5️⃣ FINAL RESPONSE
+        # -----------------------------------
+        return Response({
+            "summary": {
+                "total_points": total_points,
+                "badges_earned": badges_earned,
+                "user_rank": user_rank
+            },
+            "badges": badges,
+            "activities": activities
+        })
+    
+
+
+# views.py
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.db.models import F
+from .models import UserTable
+from .serializers import LeaderboardSerializer
+class LeaderboardAPI(APIView):
+    def get(self, request, user_id):
+        users = UserTable.objects.order_by('-total_points')
+
+        leaderboard_data = []
+        current_user_rank = 0
+        current_user_points = 0
+
+        for index, user in enumerate(users, start=1):
+            user.rank = index
+
+            # ✅ FIXED COMPARISON
+            if user.LoginId_id == user_id:
+                current_user_rank = index
+                current_user_points = user.total_points
+
+            leaderboard_data.append(user)
+
+        serializer = LeaderboardSerializer(
+            leaderboard_data[:10],
+            many=True
+        )
+
+        return Response({
+            "leaders": serializer.data,
+            "your_rank": {
+                "rank": current_user_rank,
+                "points": current_user_points
+            }
+        }, status=status.HTTP_200_OK)
+
+
+# class LeaderboardAPI(APIView):
+#     def get(self, request, user_id):
+#         # 1️⃣ Order users by points
+#         users = UserTable.objects.order_by('-total_points')
+
+#         leaderboard_data = []
+#         current_user_rank = None
+#         current_user_points = 0
+
+#         # 2️⃣ Assign ranks
+#         for index, user in enumerate(users, start=1):
+#             user.rank = index
+
+#             if user.id == user_id:
+#                 current_user_rank = index
+#                 current_user_points = user.total_points
+
+#             leaderboard_data.append(user)
+
+#         # 3️⃣ Serialize top 10
+#         serializer = LeaderboardSerializer(
+#             leaderboard_data[:10],
+#             many=True
+#         )
+#         return Response({
+#             "leaders": serializer.data,
+#             "your_rank": {
+#     "rank": current_user_rank if current_user_rank else 0,
+#     "points": current_user_points
+# }
+
+#         }, status=status.HTTP_200_OK)

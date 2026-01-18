@@ -11,7 +11,8 @@ def complaint_status_changed(sender, instance, **kwargs):
         try:
             previous_complaint = ComplaintsTable.objects.get(pk=instance.pk)
             if previous_complaint.Status != instance.Status:
+                print('------------>', instance.Status)
                 # Status has changed, create a notification
-                Notification.objects.create(ComplaintsId=instance)
+                Notification.objects.create(ComplaintsId=instance, status=instance.Status)
         except ComplaintsTable.DoesNotExist:
             pass
