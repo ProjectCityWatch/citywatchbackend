@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Active Complaints</title>
+
+    <style>
+        body {
+            background: #020617;
+            color: #e5e7eb;
+            padding: 30px;
+            font-family: Inter, Arial, sans-serif;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1400px;
+        }
+
+        th, td {
+            padding: 12px;
+            border: 1px solid #1e293b;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        th {
+            color: #93c5fd;
+        }
+
+        tbody tr:nth-child(odd) {
+            background: #0b1220;
+        }
+
+        img {
+            border-radius: 6px;
+            border: 1px solid #334155;
+        }
+
+        .deadline {
+            font-weight: 600;
+            color: #22c55e;
+        }
+
+        select, button {
+            width: 100%;
+            padding: 6px;
+            border-radius: 6px;
+            background: #020617;
+            color: #e5e7eb;
+            border: 1px solid #334155;
+        }
+
+        button {
+            background: #2563eb;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+        /* ================= FILTER BAR ================= */
+.filter-bar {
+    background: #0b1220;
+    padding: 18px 22px;
+    border: 1px solid #1e293b;
+    border-radius: 14px;
+    margin-bottom: 25px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 180px;
+}
+
+.filter-group label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #cbd5f5;
+}
+
+.filter-group select {
+    padding: 9px 12px;
+    font-size: 14px;
+    border-radius: 8px;
+    background: #020617;
+    border: 1px solid #334155;
+    color: #e5e7eb;
+}
+
+.filter-bar button {
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 8px;
+    background: #2563eb;
+    border: none;
+    color: white;
+    cursor: pointer;
+    height: 34px;
+    width: auto;
+    white-space: nowrap;
+    margin-top: 18px;
+}
+
+.filter-bar button:hover {
+    background: #1d4ed8;
+}
+
+    </style>
+</head>
+<!-- ================= CONFIRM FAKE MODAL ================= -->
+<div id="confirmFakeModal"
+     style="display:none; position:fixed; inset:0;
+            background:rgba(2,6,23,0.85);
+            z-index:9999;
+            align-items:center;
+            justify-content:center;">
+
+    <div style="
+        background:#0b1220;
+        border:1px solid #1e293b;
+        border-radius:14px;
+        padding:24px;
+        width:360px;
+        text-align:center;">
+
+        <h3>Confirm Action</h3>
+        <p style="color:#cbd5f5; margin:12px 0 20px;">
+            Are you sure you want to mark this complaint as
+            <b style="color:#fb7185;">Fake</b>?
+        </p>
+
+        <div style="display:flex; gap:12px;">
+            <button style="flex:1; background:#334155;"
+                    onclick="closeFakeModal()">
+                Cancel
+            </button>
+
+            <button id="confirmFakeBtn"
+                    style="flex:1; background:#7f1d1d;">
+                Yes, Mark Fake
+            </button>
+        </div>
+    </div>
+</div>
+
+<body>
+
+<h2>Active Complaints (Date Fixed)</h2>
+<!-- ================= FILTER BAR ================= -->
+<form method="get" class="filter-bar">
+
+    <div class="filter-group">
+        <label>Priority</label>
+        <select name="priority">
+            <option value="all">All</option>
+            <option value="High" {% if selected_priority == "High" %}selected{% endif %}>High</option>
+            <option value="Medium" {% if selected_priority == "Medium" %}selected{% endif %}>Medium</option>
+            <option value="Low" {% if selected_priority == "Low" %}selected{% endif %}>Low</option>
+        </select>
+    </div>
+
+    <div class="filter-group">
+        <label>Likes</label>
+        <select name="liked">
+            <option value="all">All</option>
+            <option value="most_liked" {% if selected_liked == "most_liked" %}selected{% endif %}>
+                Most Liked
+            </option>
+        </select>
+    </div>
+
+    <button type="submit">Apply Filters</button>
+
+</form>
+
+<table>
+    <thead>
+        <tr>
+            <th>User</th>
+            
+            <th>Description</th>
+            <th>Priority</th>
+            <th>Image</th>
+            <th>Location</th>
+            <th>Likes</th>
+            <th>Deadline</th>
+            <th>Status</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+
+    <tbody>
+    {% for i in val %}
+        <tr>
+            <td>{{ i.UserId.Name }}</td>
+            
+            <td style="text-align:left">{{ i.Description }}</td>
+            <td>{{ i.Priority }}</td>
+
+            <td>
+                {% if i.Image %}
+                    <img src="{{ i.Image.url }}" width="90" height="70">
+                {% else %}
+                    No Image
+                {% endif %}
+            </td>
+
+            <td>
+                {{ i.Latitude }}, {{ i.Longitude }} <br>
+                <a href="https://www.google.com/maps?q={{ i.Latitude }},{{ i.Longitude }}"
+                   target="_blank">Open</a>
+            </td>
+
+            <td>👍 {{ i.like_count }}</td>
+
+            <td class="deadline">{{ i.EndingDate }}</td>
+
+            <td>{{ i.Status }}</td>
+
+            <!-- <td>
+                <form method="post" action="/UpdateStatus/{{ i.id }}">
+                    {% csrf_token %}
+                    <select name="status">
+    <option value="Date Fixed" {% if i.Status == "Date Fixed" %}selected{% endif %}>
+        Date Fixed
+    </option>
+    <option value="In Progress" {% if i.Status == "In Progress" %}selected{% endif %}>
+        In Progress
+    </option>
+    <option value="Resolved">
+        Resolved
+    </option>
+</select>
+
+                    <button type="submit">Update</button>
+                </form>
+            </td> -->
+            <td>
+    <!-- UPDATE STATUS -->
+    <form method="post" action="/UpdateStatus/{{ i.id }}">
+        {% csrf_token %}
+        <select name="status">
+            <option value="Date Fixed" {% if i.Status == "Date Fixed" %}selected{% endif %}>
+                Date Fixed
+            </option>
+            <option value="In Progress" {% if i.Status == "In Progress" %}selected{% endif %}>
+                In Progress
+            </option>
+            <option value="Resolved">
+                Resolved
+            </option>
+        </select>
+
+        <button type="submit">Update</button>
+    </form>
+
+    <!-- MARK FAKE -->
+   {% if i.Status == "Date Fixed" %}
+<form method="post"
+      action="{% url 'authority_mark_fake' i.id %}"
+      class="fake-form"
+      style="margin-top:6px;">
+    {% csrf_token %}
+    <button type="button"
+            style="background:#7f1d1d;"
+            onclick="openFakeModal(this)">
+        Mark Fake
+    </button>
+</form>
+{% endif %}
+
+</td>
+
+        </tr>
+    {% empty %}
+        <tr>
+            <td colspan="10">No active complaints 🎉</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+<script>
+    let currentFakeForm = null;
+
+    function openFakeModal(btn) {
+        currentFakeForm = btn.closest("form");
+        document.getElementById("confirmFakeModal").style.display = "flex";
+    }
+
+    function closeFakeModal() {
+        currentFakeForm = null;
+        document.getElementById("confirmFakeModal").style.display = "none";
+    }
+
+    document.getElementById("confirmFakeBtn").onclick = function () {
+        if (currentFakeForm) {
+            currentFakeForm.submit();
+        }
+    };
+</script>
+
+</body>
+</html>

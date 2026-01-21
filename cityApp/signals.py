@@ -15,4 +15,4 @@ def complaint_status_changed(sender, instance, **kwargs):
                 # Status has changed, create a notification
                 Notification.objects.create(ComplaintsId=instance, status=instance.Status)
         except ComplaintsTable.DoesNotExist:
-            pass
+            pass 

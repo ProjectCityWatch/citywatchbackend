@@ -23,7 +23,6 @@
             padding: 30px;
         }
 
-        /* Card */
         .card {
             width: 100%;
             max-width: 520px;
@@ -32,9 +31,7 @@
             border: 1px solid rgba(255, 255, 255, 0.06);
             border-radius: 16px;
             padding: 30px 32px;
-            box-shadow:
-                0 10px 30px rgba(0, 0, 0, 0.55),
-                inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
         }
 
         h1 {
@@ -42,7 +39,6 @@
             margin-bottom: 25px;
             font-size: 24px;
             font-weight: 600;
-            letter-spacing: 0.5px;
         }
 
         form {
@@ -57,8 +53,7 @@
             color: #cbd5f5;
         }
 
-        input,
-        textarea {
+        input, textarea {
             width: 100%;
             padding: 10px 12px;
             background: rgba(2, 6, 23, 0.8);
@@ -68,12 +63,7 @@
             font-size: 14px;
         }
 
-        textarea {
-            resize: vertical;
-        }
-
-        input:focus,
-        textarea:focus {
+        input:focus, textarea:focus {
             outline: none;
             border-color: #60a5fa;
             background: rgba(2, 6, 23, 0.9);
@@ -92,9 +82,7 @@
             transition: background 0.2s ease;
         }
 
-        button:hover {
-            background: #1d4ed8;
-        }
+        button:hover { background: #1d4ed8; }
     </style>
 </head>
 
@@ -107,30 +95,24 @@
             {% csrf_token %}
 
             <label>Department Name</label>
-            <select name="department_name" id="">
-                <option value="">Select Department</option>
-                <option value="Roads And Public Works">Roads And Public Works</option>
-                <option value="Water Authority">Water Authority</option>
-                <option value="Waste Management">Waste Management</option>
-                <option value="Electrical Department">Electrical Department</option>
-            </select>
+            <input type="text" name="department_name" placeholder="Enter Department Name" required>
 
             <label>Address</label>
-            <textarea name="address" rows="5" cols="20"></textarea>
+            <textarea name="address" rows="3" placeholder="Enter Office Address" required></textarea>
 
             <label>Contact Info</label>
-            <input type="text" name="contact">
+            <input type="text" name="contact" placeholder="Phone number" required>
 
-            <label>Email</label>
-            <input type="text" name="Email">
+            <label>Email (Username)</label>
+            <input type="email" name="Email" placeholder="email@citywatch.com" required>
 
             <label>Head Name</label>
-            <input type="text" name="head">
+            <input type="text" name="head" placeholder="Name of Department Head" required>
 
             <label>Password</label>
-            <input type="password" name="password">
+            <input type="password" name="password" placeholder="Set password for authority" required>
 
-            <button type="submit">Submit</button>
+            <button type="submit">Register Department</button>
         </form>
     </div>
 

@@ -8,13 +8,37 @@ class LoginSerializer(serializers.ModelSerializer):
         model = LoginTable
         fields = ["Username","Password", "UserType"]
         
+# class UserSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = UserTable
+#         fields = ["Name", "PhoneNo", "Email", "LoginId"]
+#         extra_kwargs = {
+#             "LoginId": {"required": False}
+#         }
+
+#     def validate_Email(self, value):
+#         if UserTable.objects.filter(Email=value).exists():
+#             raise serializers.ValidationError("Email already registered")
+#         return value
+from django.conf import settings
+from rest_framework import serializers
+from cityApp.models import UserTable
+
+
 class UserSerializer(serializers.ModelSerializer):
+    profile = serializers.SerializerMethodField()
+
     class Meta:
         model = UserTable
-        fields = ["Name", "PhoneNo", "Email", "LoginId"]
+        fields = ["Name", "PhoneNo", "Email", "Address", "profile", "LoginId"]
         extra_kwargs = {
             "LoginId": {"required": False}
         }
+
+    def get_profile(self, obj):
+        if obj.profile:
+            return settings.MEDIA_URL + str(obj.profile)
+        return None
 
     def validate_Email(self, value):
         if UserTable.objects.filter(Email=value).exists():
@@ -69,8 +93,46 @@ class PointsSerializer(serializers.ModelSerializer):
 # -------------------------------
 # MAIN Complaint Serializer
 # -------------------------------
+# class ComplaintsSerializer1(serializers.ModelSerializer):
+#     Name = serializers.CharField(source='UserId.Name')
+#     likes = ComplaintLikeSerializer(many=True, read_only=True)
+#     comments = ComplaintCommentSerializer(many=True, read_only=True)
+#     points = serializers.SerializerMethodField()
+#     total_likes = serializers.SerializerMethodField()
+#     total_comments = serializers.SerializerMethodField()
+
+#     class Meta:
+#         model = ComplaintsTable
+#         fields = [
+#             'id',
+#             'Category',
+#             'Description',
+#             'Priority',
+#             'Image',
+#             'Latitude',
+#             'Longitude',
+#             'Status',
+#             'SubmitDate',
+#             'Name',
+#             'total_likes',
+#             'total_comments',
+#             'likes',
+#             'comments',
+#             'points',
+#         ]
+
+#     def get_points(self, obj):
+#         points = PointsTable.objects.filter(ComplaintId=obj).first()
+#         return PointsSerializer(points).data if points else None
+
+#     def get_total_likes(self, obj):
+#         return obj.likes.count()
+
+#     def get_total_comments(self, obj):
+#         return obj.comments.count()
+
 class ComplaintsSerializer1(serializers.ModelSerializer):
-    Name = serializers.CharField(source='UserId.Name')
+    display_name = serializers.SerializerMethodField()
     likes = ComplaintLikeSerializer(many=True, read_only=True)
     comments = ComplaintCommentSerializer(many=True, read_only=True)
     points = serializers.SerializerMethodField()
@@ -89,13 +151,17 @@ class ComplaintsSerializer1(serializers.ModelSerializer):
             'Longitude',
             'Status',
             'SubmitDate',
-            'Name',
+            'is_anonymous',     # ✅ SENT TO FLUTTER
+            'display_name',     # ✅ SAFE NAME
             'total_likes',
             'total_comments',
             'likes',
             'comments',
             'points',
         ]
+
+    def get_display_name(self, obj):
+        return "Anonymous" if obj.is_anonymous else obj.UserId.Name
 
     def get_points(self, obj):
         points = PointsTable.objects.filter(ComplaintId=obj).first()
@@ -106,6 +172,7 @@ class ComplaintsSerializer1(serializers.ModelSerializer):
 
     def get_total_comments(self, obj):
         return obj.comments.count()
+
 
 class AddComplaintsSerializer(serializers.ModelSerializer):
     class Meta:
@@ -129,24 +196,43 @@ class TimeLineSerializer(serializers.ModelSerializer):
         fields = ['Status','Remark','Date','Description','Category','SubmitDate','Image']
 
 class NotificationSerializer(serializers.ModelSerializer):
-    comp_id = serializers.CharField(source='ComplaintsId.id', read_only=True)
-    Description = serializers.CharField(source='ComplaintsId.Description', read_only=True)
-    status = serializers.CharField(source='ComplaintsId.Status', read_only=True)
+    comp_id = serializers.IntegerField(
+        source='ComplaintsId.id',
+        read_only=True
+    )
+    Description = serializers.CharField(
+        source='ComplaintsId.Description',
+        read_only=True
+    )
+    Category = serializers.CharField(
+        source='ComplaintsId.Category',
+        read_only=True
+    )
+    complaint_status = serializers.CharField(
+        source='ComplaintsId.Status',
+        read_only=True
+    )
 
     class Meta:
         model = Notification
-        fields = ['id', 'Description','comp_id', 'Date', 'status']        
-
+        fields = [
+            'id',
+            'Category',
+            'Description',
+            'comp_id',
+            'Date',
+            'complaint_status',
+            'is_read',
+        ]
 
 # serializers.py
 from rest_framework import serializers
-from django.db.models import Count, Q
 from .models import UserTable, ComplaintsTable
-
 
 class LeaderboardSerializer(serializers.ModelSerializer):
     reported = serializers.SerializerMethodField()
     resolved = serializers.SerializerMethodField()
+    profile_image = serializers.SerializerMethodField()
     rank = serializers.IntegerField()
     points = serializers.IntegerField(source='total_points')
 
@@ -159,6 +245,7 @@ class LeaderboardSerializer(serializers.ModelSerializer):
             'rank',
             'reported',
             'resolved',
+            'profile_image',
         ]
 
     def get_reported(self, obj):
@@ -170,3 +257,11 @@ class LeaderboardSerializer(serializers.ModelSerializer):
             Status__iexact="resolved"
         ).count()
 
+    def get_profile_image(self, obj):
+        # 🔥 THIS IS THE FIX
+        if obj.profile:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.profile.url)
+            return obj.profile.url
+        return None

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Assign Works</title>
+    <title>Assign Decision</title>
 
     <style>
         * {
@@ -26,6 +26,7 @@
             font-weight: 600;
         }
 
+        /* ================= FILTER BAR ================= */
         form[method="get"] {
             background: #0b1220;
             padding: 18px;
@@ -58,17 +59,17 @@
             font-size: 14px;
             font-weight: 600;
             border-radius: 8px;
+            background: #2563eb;
             border: none;
             color: white;
             cursor: pointer;
         }
 
-        .btn-assign { background: #2563eb; }
-        .btn-assign:hover { background: #1d4ed8; }
+        button:hover {
+            background: #1d4ed8;
+        }
 
-        .btn-fake { background: #7f1d1d; }
-        .btn-fake:hover { background: #991b1b; }
-
+        /* ================= TABLE ================= */
         .table-wrapper {
             border: 1px solid #1e293b;
             border-radius: 14px;
@@ -125,29 +126,10 @@
 
         a:hover { text-decoration: underline; }
 
-        .not-assigned {
-            color: #fb7185;
-            font-weight: 600;
-        }
-
-        .status {
-            padding: 6px 12px;
-            border-radius: 999px;
-            font-size: 12px;
-            font-weight: 600;
-            display: inline-block;
-        }
-
-        .Assigned   { background: #14532d; color: #bbf7d0; }
-        .DateFixed  { background: #78350f; color: #fde68a; }
-        .Extended   { background: #92400e; color: #ffedd5; }  /* ✅ ADDED */
-        .InProgress { background: #1e3a8a; color: #bfdbfe; }
-        .Resolved   { background: #4c1d95; color: #ddd6fe; }
-        .Fake       { background: #7f1d1d; color: #fecaca; }
-
-        td:last-child form { margin-bottom: 6px; }
+        td:last-child form { margin-bottom: 8px; }
         td:last-child button { width: 100%; }
 
+        /* ================= MODAL ================= */
         #confirmFakeModal {
             display: none;
             position: fixed;
@@ -180,8 +162,9 @@
 
 <body>
 
-<h2>Complaints Overview</h2>
+<h2>Complaint Review (Assign / Fake)</h2>
 
+<!-- ================= FILTER ================= -->
 <form method="get">
     <label>Department</label>
     <select name="department">
@@ -194,44 +177,10 @@
         {% endfor %}
     </select>
 
-    <label>Status</label>
-<select name="status">
-    <option value="all">All</option>
-
-    <option value="Assigned"
-        {% if selected_status == "Assigned" %}selected{% endif %}>
-        Assigned
-    </option>
-
-    <option value="Date Fixed"
-        {% if selected_status == "Date Fixed" %}selected{% endif %}>
-        Date Fixed
-    </option>
-
-    <option value="Extended"
-        {% if selected_status == "Extended" %}selected{% endif %}>
-        Extended
-    </option>
-
-    <option value="In Progress"
-        {% if selected_status == "In Progress" %}selected{% endif %}>
-        In Progress
-    </option>
-
-    <option value="Resolved"
-        {% if selected_status == "Resolved" %}selected{% endif %}>
-        Resolved
-    </option>
-    <option value="fake"
-        {% if selected_status == "fake" %}selected{% endif %}>
-        Fake
-    </option>
-</select>
-
-
-    <button class="btn-assign" type="submit">Filter</button>
+    <button type="submit">Filter</button>
 </form>
 
+<!-- ================= TABLE ================= -->
 <div class="table-wrapper">
 <table>
     <thead>
@@ -244,93 +193,89 @@
             <th>Image</th>
             <th>Location</th>
             <th>Map</th>
-            <th>Requested Date</th>
+            <th>Submitted</th>
             <th>Action</th>
         </tr>
     </thead>
 
     <tbody>
     {% for i in val %}
-    <tr>
-        <td>{{ i.UserId.Name }}</td>
-        <td>{{ i.DepartmentId.DepartmentName }}</td>
-        <td>{{ i.Category }}</td>
-        <td>{{ i.Description }}</td>
-        <td>{{ i.Priority }}</td>
+        <tr>
+            <td>{{ i.UserId.Name }}</td>
+            <td>{{ i.DepartmentId.DepartmentName }}</td>
+            <td>{{ i.Category }}</td>
+            <td>{{ i.Description }}</td>
+            <td>{{ i.Priority }}</td>
 
-        <td>
-            {% if i.Image %}
-                <img src="{{ i.Image.url }}" width="110" height="90">
-            {% else %} No Image {% endif %}
-        </td>
+            <td>
+                {% if i.Image %}
+                    <img src="{{ i.Image.url }}" width="110" height="90">
+                {% else %}
+                    No Image
+                {% endif %}
+            </td>
 
-        <td>
-            {{ i.Latitude }}, {{ i.Longitude }} <br>
-            <a href="https://www.google.com/maps?q={{ i.Latitude }},{{ i.Longitude }}" target="_blank">Open</a>
-        </td>
+            <td>
+                {{ i.Latitude }}, {{ i.Longitude }} <br>
+                <a href="https://www.google.com/maps?q={{ i.Latitude }},{{ i.Longitude }}" target="_blank">
+                    Open
+                </a>
+            </td>
 
-        <td>
-            <iframe width="250" height="170"
-                src="https://www.google.com/maps?q={{ i.Latitude }},{{ i.Longitude }}&output=embed"
-                loading="lazy">
-            </iframe>
-        </td>
+            <td>
+                <iframe width="250" height="170"
+                    src="https://www.google.com/maps?q={{ i.Latitude }},{{ i.Longitude }}&output=embed"
+                    loading="lazy">
+                </iframe>
+            </td>
 
-        <td>
-            {% if not i.EndingDate %}
-                <span class="not-assigned">Not Assigned</span>
-            {% else %}
-                {{ i.EndingDate }}
-            {% endif %}
-        </td>
+            <td>{{ i.SubmitDate|date:"d M Y, h:i A" }}</td>
 
-        <td>
-            {% if i.Status == 'fake' %}
-                <span class="status Fake">Fake</span>
-
-            {% elif i.Status == 'Assigned' %}
-                <span class="status Assigned">Assigned</span>
-
-            {% elif i.Status == 'Date Fixed' %}
-                <span class="status DateFixed">Date Fixed</span>
-
-            {% elif i.Status == 'Extended' %}
-                <span class="status Extended">Extended</span>
-
-            {% elif i.Status == 'In Progress' %}
-                <span class="status InProgress">In Progress</span>
-
-            {% elif i.Status == 'Resolved' %}
-                <span class="status Resolved">Resolved</span>
-
-            {% else %}
+            <td>
                 <form method="post" action="{% url 'submit_work' i.id %}">
                     {% csrf_token %}
-                    <button type="submit" class="btn-assign">Assign Work</button>
+                    <button type="submit">Assign Work</button>
                 </form>
 
-                <form method="post" action="{% url 'mark_fake' i.id %}" class="fake-form">
+                <form method="post"
+                      action="{% url 'mark_fake' i.id %}"
+                      class="fake-form">
                     {% csrf_token %}
-                    <button type="button" class="btn-fake" onclick="openFakeModal(this)">
+                    <button type="button"
+                            style="background:#7f1d1d;"
+                            onclick="openFakeModal(this)">
                         Mark Fake
                     </button>
                 </form>
-            {% endif %}
-        </td>
-    </tr>
+            </td>
+        </tr>
+    {% empty %}
+        <tr>
+            <td colspan="10" style="padding:20px; text-align:center;">
+                No pending complaints 🎉
+            </td>
+        </tr>
     {% endfor %}
     </tbody>
 </table>
 </div>
 
+<!-- ================= CONFIRM FAKE MODAL ================= -->
 <div id="confirmFakeModal">
     <div class="modal-box">
         <h3>Confirm Action</h3>
-        <p>Are you sure you want to mark this complaint as <b style="color:#fb7185;">Fake</b>?</p>
+        <p>
+            Are you sure you want to mark this complaint as
+            <b style="color:#fb7185;">Fake</b>?
+        </p>
 
         <div style="display:flex; gap:12px;">
-            <button style="flex:1; background:#334155;" onclick="closeFakeModal()">Cancel</button>
-            <button id="confirmFakeBtn" style="flex:1; background:#7f1d1d;">Yes, Mark Fake</button>
+            <button style="flex:1; background:#334155;"
+                    onclick="closeFakeModal()">Cancel</button>
+            <button id="confirmFakeBtn"
+                    style="flex:1; background:#7f1d1d;">
+                Yes, Mark Fake
+            </button>
         </div>
     </div>
 </div>
@@ -339,16 +284,16 @@
     let currentFakeForm = null;
 
     function openFakeModal(btn) {
-        currentFakeForm = btn.closest('form');
-        document.getElementById('confirmFakeModal').style.display = 'flex';
+        currentFakeForm = btn.closest("form");
+        document.getElementById("confirmFakeModal").style.display = "flex";
     }
 
     function closeFakeModal() {
         currentFakeForm = null;
-        document.getElementById('confirmFakeModal').style.display = 'none';
+        document.getElementById("confirmFakeModal").style.display = "none";
     }
 
-    document.getElementById('confirmFakeBtn').onclick = function () {
+    document.getElementById("confirmFakeBtn").onclick = function () {
         if (currentFakeForm) {
             currentFakeForm.submit();
         }

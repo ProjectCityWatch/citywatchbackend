@@ -73,6 +73,35 @@ BADGE_DEFINITION = {
     }
 }
 
+def mark_complaint_fake(complaint):
+    if complaint.Status == "fake":
+        return
+
+    # 1️⃣ Update complaint status
+    complaint.Status = "fake"
+    complaint.save(update_fields=["Status"])
+
+    # 2️⃣ Timeline entry (🔥 THIS WAS MISSING)
+    TimeLineTable.objects.create(
+        ComplaintId=complaint,
+        Status="fake",
+        Remark="Complaint marked as fake"
+    )
+
+    # 3️⃣ Warning
+    user = complaint.UserId
+    user.warnings += 1
+    user.save(update_fields=["warnings"])
+
+    # 4️⃣ Points deduction
+    PointsTable.objects.create(
+        ComplaintId=complaint,
+        Points=-100
+    )
+
+    # 5️⃣ Recalculate total points
+    recalculate_user_points(user)
+
 
 
 # --- Login ---
@@ -105,72 +134,110 @@ from .models import ComplaintsTable, PointsTable
 class MarkFakeComplaint(View):
     def post(self, request, c_id):
         complaint = get_object_or_404(ComplaintsTable, id=c_id)
+        mark_complaint_fake(complaint)
+        # # Prevent double punishment
+        # if complaint.Status == 'fake':
+        #     return redirect('assign_works')
 
-        # Prevent double punishment
-        if complaint.Status == 'fake':
-            return redirect('assign_works')
+        # # 1️⃣ Mark complaint as fake
+        # complaint.Status = 'fake'
+        # complaint.save()
 
-        # 1️⃣ Mark complaint as fake
-        complaint.Status = 'fake'
-        complaint.save()
+        # # 2️⃣ Add warning
+        # user = complaint.UserId
+        # user.warnings += 1
+        # user.save()
 
-        # 2️⃣ Add warning
-        user = complaint.UserId
-        user.warnings += 1
-        user.save()
+        # # 3️⃣ Log -100 points
+        # PointsTable.objects.create(
+        #     ComplaintId=complaint,
+        #     Points=-100
+        # )
 
-        # 3️⃣ Log -100 points
-        PointsTable.objects.create(
-            ComplaintId=complaint,
-            Points=-100
-        )
-
-        # 4️⃣ Recalculate & store total points (VIEW LOGIC)
-        recalculate_user_points(user)
+        # # 4️⃣ Recalculate & store total points (VIEW LOGIC)
+        # recalculate_user_points(user)
 
         return redirect('assign_works')
 
 
 
 
+
+
 class AddAdminHomeView(View):
     def get(self, request):
-        return render(request, 'Administration/adminhome.html')
+        # Fetching real data for the stats bar
+        dept_count = DepartmentsTable.objects.count()
+        user_count = UserTable.objects.count()
+        total_complaints = ComplaintsTable.objects.count()
+
+        context = {
+            'dept_count': dept_count,
+            'user_count': user_count,
+            'total_complaints': total_complaints,
+        }
+        return render(request, 'Administration/adminhome.html', context)
     
+from django.views import View
+from django.shortcuts import render
+from django.http import HttpResponse
+from .models import LoginTable, DepartmentsTable
+
 class AddDepartmentView(View): 
     def get(self, request): 
         return render(request, 'Administration/adddepartment.html')
+
     def post(self, request):
-        department_name = request.POST['department_name']
-        address = request.POST['address']
-        contact = request.POST['contact']
-        head = request.POST['head']
-        password = request.POST['password']
-        email = request.POST['Email']
+        # Extract data from form
+        department_name = request.POST.get('department_name')
+        address = request.POST.get('address')
+        contact = request.POST.get('contact')
+        head = request.POST.get('head')
+        password = request.POST.get('password')
+        email = request.POST.get('Email')
+
+        # 1. Create Login Credentials
         login_obj = LoginTable()
-        login_obj.Username=email
-        login_obj.Password=password
-        login_obj.UserType='Authority'
+        login_obj.Username = email
+        login_obj.Password = password
+        login_obj.UserType = 'Authority'
         login_obj.save()
+
+        # 2. Create Department Record
         obj = DepartmentsTable()
-        obj.DepartmentName=department_name
-        obj.Address=address
+        obj.DepartmentName = department_name
+        obj.Address = address
         obj.Email = email
-        obj.ContactInfo=contact
-        obj.HeadName=head
-        obj.LoginId=login_obj
+        obj.ContactInfo = contact
+        obj.HeadName = head
+        obj.LoginId = login_obj # Link to the login record
         obj.save()
-        return HttpResponse('''<script>alert('Department Added');window.location='/manage-department';</script>''')
 
-class AssignWorks(View):
-    def get(self, request):
-        assign_date = AssignWork.objects.filter(
-            ComplaintId=OuterRef('pk')
-        ).values('EndingDate')[:1]
+        return HttpResponse('''
+            <script>
+                alert('Department Added Successfully');
+                window.location='/manage-department';
+            </script>
+        ''')
 
-#         complaints = ComplaintsTable.objects.exclude(
-#     Status='fake'
-# ).annotate(
+# class AssignWorks(View):
+#     def get(self, request):
+#         assign_date = AssignWork.objects.filter(
+#             ComplaintId=OuterRef('pk')
+#         ).values('EndingDate')[:1]
+
+# #         complaints = ComplaintsTable.objects.exclude(
+# #     Status='fake'
+# # ).annotate(
+# #     final_deadline=Subquery(assign_date),
+# #     deadline_changed=Exists(
+# #         TimeLineTable.objects.filter(
+# #             ComplaintId=OuterRef('pk'),
+# #             Status="Requested"
+# #         )
+# #     )
+# # )
+#         complaints = ComplaintsTable.objects.annotate(
 #     final_deadline=Subquery(assign_date),
 #     deadline_changed=Exists(
 #         TimeLineTable.objects.filter(
@@ -179,75 +246,29 @@ class AssignWorks(View):
 #         )
 #     )
 # )
-        complaints = ComplaintsTable.objects.annotate(
-    final_deadline=Subquery(assign_date),
-    deadline_changed=Exists(
-        TimeLineTable.objects.filter(
-            ComplaintId=OuterRef('pk'),
-            Status="Requested"
-        )
-    )
-)
 
 
-        departments = DepartmentsTable.objects.all()
-
-        assigned_ids = list(
-            AssignWork.objects.values_list('ComplaintId_id', flat=True)
-        )
-
-        department_id = request.GET.get('department')
-        status = request.GET.get('status')
-
-        if status == "assigned":
-            complaints = complaints.exclude(Status='fake').filter(id__in=assigned_ids)
-
-        elif status == "not_assigned":
-             complaints = complaints.exclude(Status='fake').exclude(id__in=assigned_ids)
-
-        elif status == "fake":
-            complaints = complaints.filter(Status='fake')
-
-        else:
-            complaints = complaints.exclude(Status='fake')
-
-
-        return render(
-            request,
-            'Administration/assignworks.html',
-            {
-                'val': complaints,
-                'departments': departments,
-                'assigned_ids': assigned_ids,
-                'selected_department': department_id,
-                'selected_status': status
-            }
-        )
-
-
-
-
-# class   AssignWorks(View):
-#     def get(self, request):
-#         complaints = ComplaintsTable.objects.all()
 #         departments = DepartmentsTable.objects.all()
 
-#         # assigned complaint IDs
 #         assigned_ids = list(
 #             AssignWork.objects.values_list('ComplaintId_id', flat=True)
 #         )
 
-#         # FILTERS
 #         department_id = request.GET.get('department')
 #         status = request.GET.get('status')
 
-#         if department_id and department_id != "all":
-#             complaints = complaints.filter(DepartmentId_id=department_id)
-
 #         if status == "assigned":
-#             complaints = complaints.filter(id__in=assigned_ids)
+#             complaints = complaints.exclude(Status='fake').filter(id__in=assigned_ids)
+
 #         elif status == "not_assigned":
-#             complaints = complaints.exclude(id__in=assigned_ids)
+#              complaints = complaints.exclude(Status='fake').exclude(id__in=assigned_ids)
+
+#         elif status == "fake":
+#             complaints = complaints.filter(Status='fake')
+
+#         else:
+#             complaints = complaints.exclude(Status='fake')
+
 
 #         return render(
 #             request,
@@ -260,6 +281,114 @@ class AssignWorks(View):
 #                 'selected_status': status
 #             }
 #         )
+
+
+# class AssignWorks(View):
+#     def get(self, request):
+#         assign_date = AssignWork.objects.filter(
+#             ComplaintId=OuterRef('pk')
+#         ).values('EndingDate')[:1]
+
+#         complaints = ComplaintsTable.objects.exclude(
+#             Status__iexact='Pending'   # 👈 THIS LINE
+#         ).annotate(
+#             final_deadline=Subquery(assign_date),
+#             deadline_changed=Exists(
+#                 TimeLineTable.objects.filter(
+#                     ComplaintId=OuterRef('pk'),
+#                     Status="Requested"
+#                 )
+#             )
+#         )
+
+#         departments = DepartmentsTable.objects.all()
+
+#         assigned_ids = list(
+#             AssignWork.objects.values_list('ComplaintId_id', flat=True)
+#         )
+
+#         department_id = request.GET.get('department')
+#         status = request.GET.get('status')
+
+#         if status == "assigned":
+#             complaints = complaints.exclude(Status='fake').filter(id__in=assigned_ids)
+
+#         elif status == "not_assigned":
+#             complaints = complaints.exclude(Status='fake').exclude(id__in=assigned_ids)
+
+#         elif status == "fake":
+#             complaints = complaints.filter(Status='fake')
+
+#         else:
+#             complaints = complaints.exclude(Status='fake')
+
+#         return render(
+#             request,
+#             'Administration/assignworks.html',
+#             {
+#                 'val': complaints,
+#                 'departments': departments,
+#                 'assigned_ids': assigned_ids,
+#                 'selected_department': department_id,
+#                 'selected_status': status
+#             }
+#         )
+
+class AssignWorks(View):
+    def get(self, request):
+        assign_date = AssignWork.objects.filter(
+            ComplaintId=OuterRef('pk')
+        ).values('EndingDate')[:1]
+
+        complaints = ComplaintsTable.objects.exclude(
+            Status__iexact='Pending'
+        ).annotate(
+            final_deadline=Subquery(assign_date),
+            deadline_changed=Exists(
+                TimeLineTable.objects.filter(
+                    ComplaintId=OuterRef('pk'),
+                    Status="Requested"
+                )
+            )
+        )
+
+        departments = DepartmentsTable.objects.all()
+
+        department_id = request.GET.get('department')
+        # --------------------------------------------------
+        # ✅ DEPARTMENT FILTER (THIS WAS MISSING)
+        # --------------------------------------------------
+        if department_id and department_id != "all":
+            complaints = complaints.filter(DepartmentId_id=department_id)
+        status = request.GET.get('status')
+
+        # ------------------------------------
+        # ✅ STATUS FILTER LOGIC
+        # ------------------------------------
+        if status == "fake":
+            # show ONLY fake complaints
+            complaints = complaints.filter(Status='fake')
+
+        elif status and status != "all":
+            # show selected status, but exclude fake
+            complaints = complaints.filter(Status=status).exclude(Status='fake')
+
+        else:
+            # default → hide fake
+            complaints = complaints.exclude(Status='fake')
+
+        return render(
+            request,
+            'Administration/assignworks.html',
+            {
+                'val': complaints,
+                'departments': departments,
+                'selected_department': department_id,
+                'selected_status': status
+            }
+        )
+
+
 
 
 
@@ -300,15 +429,9 @@ class UnblockUser(View):
         obj.save()
         return HttpResponse('''<script>alert('User Unblocked');window.location='/manage-users';</script>''')
 
-class NotificationView(View):
-    def get(self, request):
-        return render(request, 'Administration/notification.html')
 
+    
 
-class SendNotificationsView(View):
-    def get(self, request):
-        obj =Notification.objects.all()
-        return render(request, 'Administration/sendnotifications.html',{'val': obj})
 
 
 class SubmitWorkView(View):
@@ -363,86 +486,9 @@ class SubmitWorkView(View):
 #             "<script>alert('Work Assigned Successfully');window.location='/assign-works/';</script>"
 #         )
 
-# class UpdateStatus(View):
-#     def post(self, request, c_id):
-#         complaint = ComplaintsTable.objects.get(id=c_id)
-#         complaint.Status = request.POST['status']
-#         complaint.save()
-#         time_line_obj = TimeLineTable()
-#         time_line_obj.ComplaintId = complaint
-#         time_line_obj.Status = request.POST['status']
-#         time_line_obj.save()
-#         return HttpResponse(
-#             "<script>alert('Status updated Successfully');window.location='/viewcomplaintsview/';</script>"
 #         )
         
-# class UpdateStatus(View):
-#     def post(self, request, c_id):
-#         status = request.POST.get('status')
 
-#         # update complaint status
-#         complaint = ComplaintsTable.objects.get(id=c_id)
-#         complaint.Status = status
-#         complaint.save(update_fields=['Status'])
-
-#         assign = AssignWork.objects.filter(ComplaintId__id = c_id).first()
-#         assign.Status = status
-#         assign.save(update_fields=['Status'])
-
-#         # update timeline if exists, else create
-#         TimeLineTable.objects.update_or_create(
-#             ComplaintId=complaint,
-#             defaults={
-#                 'Status': status
-#             }
-#         )
-
-#         return HttpResponse(
-#             "<script>alert('Status updated Successfully');"
-#             "window.location='/viewcomplaintsview/';</script>"
-#         )
-
-
-# class UpdateStatus(View):
-#     def post(self, request, c_id):
-#         status = request.POST.get('status')
-
-#         # 1️⃣ Update complaint status
-#         complaint = ComplaintsTable.objects.get(id=c_id)
-#         user_id=complaint.UserId.id
-    
-#         complaint.Status = status
-#         complaint.save(update_fields=['Status'])
-   
-#         if status == "Resolved":
-#             Point_obj = PointsTable.objects.get(ComplaintId_id=complaint.id)
-#             point = Point_obj.Points
-#             Point_obj.Points = 200 + point
-#             Point_obj.save()
-#             obj = BadgeTable.objects.filter(ComplaintId__UserId_id=user_id, ComplaintId__Status="Resolved")
-#             if len(obj)==1:
-#                 Badge_obj = BadgeTable()
-#                 Badge_obj.ComplaintId = complaint
-#                 Badge_obj.Badge = 'First Problem Resolved'
-#                 Badge_obj.save()
-
-#         # 2️⃣ Update assigned work status (if exists)
-#         assign = AssignWork.objects.filter(ComplaintId_id=c_id).first()
-#         if assign:
-#             assign.Status = status
-#             assign.save(update_fields=['Status'])
-
-#         # 3️⃣ ALWAYS create a new timeline entry (HISTORY)
-#         TimeLineTable.objects.create(
-#             ComplaintId=complaint,
-#             Status=status
-#         )
-#         Notification.objects.create(ComplaintsId=complaint)
-#         return HttpResponse(
-#             "<script>alert('Status updated Successfully');"
-#             "window.location='/viewcomplaintsview/';</script>"
-#         )
-# 
 class UpdateStatus(View):
     def post(self, request, c_id):
         status = request.POST.get('status')
@@ -566,6 +612,7 @@ class UpdateStatus(View):
             "window.location='/viewcomplaintsview/';</script>"
         )
 
+
 class ViewComplaints(View):
     def get(self, request):
         obj =ComplaintsTable.objects.all()
@@ -592,9 +639,42 @@ class ViewFeedback(View):
 
 
 # ------------------------------ Authority ---------------------------------------
+from django.utils import timezone
+from django.db.models import Q
+
 class AuthorityHomeView(View):
     def get(self, request):
-        return render(request, 'Authority/authorityhome.html')
+        # 1. Get the current authority's login ID from session
+        login_id = request.session.get('loginid')
+        
+        # 2. Base query: Only complaints belonging to this Authority's department
+        # We also exclude 'fake' complaints from general stats
+        base_query = ComplaintsTable.objects.filter(
+            DepartmentId__LoginId_id=login_id
+        ).exclude(Status='fake')
+
+        # --- LOGIC ---
+
+        # NEW REPORTS: Status is 'Assigned' (as per your requirement)
+        new_count = base_query.filter(Status='Assigned').count()
+
+        # OVERDUE: Current date > EndingDate AND status is not Resolved/Fake
+        # Note: We check EndingDate from ComplaintsTable as updated in your request_ending_date view
+        overdue_count = base_query.filter(
+            EndingDate__lt=timezone.now().date(),
+        ).exclude(Status='Resolved').count()
+
+        # RESOLVED: Status is 'Resolved'
+        resolved_count = base_query.filter(Status='Resolved').count()
+
+        # 3. Pass values to context
+        context = {
+            'new_count': new_count,
+            'overdue_count': overdue_count,
+            'resolved_count': resolved_count,
+        }
+
+        return render(request, 'Authority/authorityhome.html', context)
 
 
 class UpdateView(View):
@@ -629,44 +709,125 @@ class ReplayView(View):
         return HttpResponse('''<script>alert('Replayed successfully');window.location='/viewfeedback/';</script>''')
 
 
-class ViewComplaintsView(View):
-    def get(self, request):
-        print(request.session['loginid'])
-        complaints = ComplaintsTable.objects.filter(DepartmentId__LoginId_id=request.session['loginid'])
-        print("-----------",complaints)
-        return render(request, 'Authority/viewcomplaints.html', {'val': complaints})
-    
 # class ViewComplaintsView(View):
 #     def get(self, request):
-#         complaints = ComplaintsTable.objects.all()
-
-#         for c in complaints:
-#             try:
-#                 assign = AssignWork.objects.get(ComplaintId=c)
-#                 c.EndingDate = assign.EndingDate
-#                 c.work_status = assign.Status
-#             except AssignWork.DoesNotExist:
-#                 c.assigned_date = None
-#                 c.work_status = "Not Assigned"
-
+#         print(request.session['loginid'])
+#         complaints = ComplaintsTable.objects.filter(DepartmentId__LoginId_id=request.session['loginid'])
+#         print("-----------",complaints)
 #         return render(request, 'Authority/viewcomplaints.html', {'val': complaints})
     
+# # class ViewComplaintsView(View):
+# #     def get(self, request):
+# #         complaints = ComplaintsTable.objects.all()
 
+# #         for c in complaints:
+# #             try:
+# #                 assign = AssignWork.objects.get(ComplaintId=c)
+# #                 c.EndingDate = assign.EndingDate
+# #                 c.work_status = assign.Status
+# #             except AssignWork.DoesNotExist:
+# #                 c.assigned_date = None
+# #                 c.work_status = "Not Assigned"
+
+# #         return render(request, 'Authority/viewcomplaints.html', {'val': complaints})
+    
+
+#     def post(self, request):
+#         complaint_id = request.POST.get('complaint_id')
+#         status = request.POST.get('status')
+
+#         assign = get_object_or_404(AssignWork, ComplaintId_id=complaint_id)
+
+#         assign.Status = status
+#         assign.save()
+
+
+
+#         return HttpResponse(
+#             "<script>alert('Status changed successfully');"
+#             "window.location='/viewcomplaintsview';</script>"
+#         )
+from django.db.models import Count, Case, When, IntegerField
+
+class ViewComplaintsView(View):
+    def get(self, request):
+        status_filter = request.GET.get("status")
+        priority_filter = request.GET.get("priority")
+
+        # ------------------------------------
+        # BASE QUERY (department only)
+        # ------------------------------------
+        complaints = ComplaintsTable.objects.filter(
+            DepartmentId__LoginId_id=request.session['loginid']
+        )
+
+        # ------------------------------------
+        # STATUS HANDLING (FAKE LOGIC)
+        # ------------------------------------
+        if status_filter == "fake":
+            # ✅ show ONLY fake complaints
+            complaints = complaints.filter(Status="fake")
+        else:
+            # ✅ default → hide fake complaints
+            complaints = complaints.exclude(Status="fake")
+
+            # apply normal status filter
+            if status_filter and status_filter != "all":
+                complaints = complaints.filter(Status=status_filter)
+            else:
+                # default visible statuses
+                complaints = complaints.filter(
+                    Status__in=[
+                        "Assigned",
+                        "Date Fixed",
+                        "Extended",
+                        "In Progress",
+                        "Resolved"
+                    ]
+                )
+
+        # ------------------------------------
+        # PRIORITY FILTER
+        # ------------------------------------
+        if priority_filter and priority_filter != "all":
+            complaints = complaints.filter(Priority=priority_filter)
+
+        # ------------------------------------
+        # ANNOTATIONS + ORDERING (UNCHANGED)
+        # ------------------------------------
+        complaints = complaints.annotate(
+            like_count=Count("likes"),
+            resolved_order=Case(
+                When(Status="Resolved", then=0),
+                default=1,
+                output_field=IntegerField()
+            )
+        ).order_by("resolved_order", "-SubmitDate")
+
+        return render(
+            request,
+            "Authority/viewcomplaints.html",
+            {
+                "val": complaints,
+                "selected_status": status_filter,
+                "selected_priority": priority_filter
+            }
+        )
+
+    # 🔴 post() unchanged
     def post(self, request):
-        complaint_id = request.POST.get('complaint_id')
-        status = request.POST.get('status')
+        complaint_id = request.POST.get("complaint_id")
+        status = request.POST.get("status")
 
         assign = get_object_or_404(AssignWork, ComplaintId_id=complaint_id)
-
         assign.Status = status
         assign.save()
-
-
 
         return HttpResponse(
             "<script>alert('Status changed successfully');"
             "window.location='/viewcomplaintsview';</script>"
         )
+
 class request_ending_date(View):
     def post(self,request):
      if request.method == "POST":
@@ -707,49 +868,145 @@ class AuthorityProfileView(View):
             profile.save()
         return HttpResponse('''<script>alert('Updated successfully');window.location='/authorityhome/';</script>''')
 
+# class UpdateDeadlineView(View):
+#     def get(self, request, id):
+#         c = ComplaintsTable.objects.get(id=id)
+#         return render(request, 'Authority/updatedeadline.html',{'val':c})
+
+
+#     def post(self, request, id):
+#         # existing complaint
+#         c = ComplaintsTable.objects.get(id=id)
+
+#         # assigned work (must exist)
+#         v = AssignWork.objects.get(ComplaintId__id=c.id)
+
+#         # form bound to complaint
+#         d = ComplaintsForm(request.POST, instance=c)
+
+#         if d.is_valid():
+#             reg = d.save(commit=False)
+
+#             # update ending date in AssignWork
+#             v.EndingDate = reg.EndingDate
+#             v.save(update_fields=['EndingDate'])
+
+#             # save complaint
+#             reg.save()
+
+#             # 🔥 CREATE TIMELINE ENTRY ONLY IF EXTENDED
+#             if reg.Status == "Extended":
+#                 TimeLineTable.objects.create(
+#                     ComplaintId=c,
+#                     Status="Extended",
+#                     EndingDate=reg.EndingDate,
+#                     Remark=request.POST.get('reason')
+#                 )
+
+#             return redirect('/viewcomplaintsview/')
 class UpdateDeadlineView(View):
     def get(self, request, id):
         c = ComplaintsTable.objects.get(id=id)
-        return render(request, 'Authority/updatedeadline.html',{'val':c})
-
+        return render(request, 'Authority/updatedeadline.html', {'val': c})
 
     def post(self, request, id):
-        # existing complaint
         c = ComplaintsTable.objects.get(id=id)
-
-        # assigned work (must exist)
         v = AssignWork.objects.get(ComplaintId__id=c.id)
 
-        # form bound to complaint
         d = ComplaintsForm(request.POST, instance=c)
 
         if d.is_valid():
             reg = d.save(commit=False)
 
-            # update ending date in AssignWork
+            # ✅ FORCE EXTENDED STATUS
+            reg.Status = "Extended"
+
+            # update deadline
             v.EndingDate = reg.EndingDate
-            v.save(update_fields=['EndingDate'])
+            v.save(update_fields=["EndingDate"])
 
             # save complaint
-            reg.save()
+            reg.save(update_fields=["EndingDate", "Status"])
 
-            # 🔥 CREATE TIMELINE ENTRY ONLY IF EXTENDED
-            if reg.Status == "Extended":
-                TimeLineTable.objects.create(
-                    ComplaintId=c,
-                    Status="Extended",
-                    EndingDate=reg.EndingDate,
-                    Remark=request.POST.get('reason')
-                )
+            # timeline entry
+            TimeLineTable.objects.create(
+                ComplaintId=c,
+                Status="Extended",
+                EndingDate=reg.EndingDate,
+                Remark=request.POST.get("reason")
+            )
 
-            return redirect('/viewcomplaintsview/')
+        return redirect('/viewcomplaintsview/')
+
+from django.views import View
+from django.shortcuts import get_object_or_404, redirect
+from cityApp.models import ComplaintsTable
+
+class AuthorityMarkFakeComplaint(View):
+    def post(self, request, c_id):
+
+        # 🔐 ensure complaint belongs to this authority
+        complaint = get_object_or_404(
+            ComplaintsTable,
+            id=c_id,
+            DepartmentId__LoginId_id=request.session['loginid']
+        )
+
+        mark_complaint_fake(complaint)
+
+        # go back to same page
+        return redirect(request.META.get("HTTP_REFERER", "/authority/date-fixed-complaints/"))
 
 
 #############################################  API ###########################################
 
+# class UserRegistration(APIView):
+#     def post(self, request):
+#         print("++++++++++++++", request.data)
+
+#         # LOGIN CREDENTIALS
+#         login_serial = LoginSerializer(data={
+#             "Username": request.data.get("Username"),
+#             "Password": request.data.get("Password"),
+#             "UserType": "USER"
+#         })
+
+#         # USER BASIC DATA
+#         user_serial = UserSerializer(data=request.data)
+
+#         if login_serial.is_valid():
+#             login_obj = login_serial.save()
+
+#             if user_serial.is_valid():
+#                 user_serial.save(LoginId=login_obj)
+#                 return Response(
+#                     {"status": "success",
+#                      "message": "User Registered Successfully",
+#                      "user": user_serial.data},
+#                     status=status.HTTP_201_CREATED
+#                 )
+
+#             # delete login if user fails
+#             login_obj.delete()
+#             return Response(
+#                 {"status": "error", "errors": user_serial.errors},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+
+#         return Response(
+#             {"status": "error", "errors": login_serial.errors},
+#             status=status.HTTP_400_BAD_REQUEST
+#         )
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.parsers import MultiPartParser, FormParser
 class UserRegistration(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+
     def post(self, request):
         print("++++++++++++++", request.data)
+        print("++++++++++++++ FILES:", request.FILES)
 
         # LOGIN CREDENTIALS
         login_serial = LoginSerializer(data={
@@ -758,22 +1015,28 @@ class UserRegistration(APIView):
             "UserType": "USER"
         })
 
-        # USER BASIC DATA
+        # USER BASIC DATA (includes profile now)
         user_serial = UserSerializer(data=request.data)
 
         if login_serial.is_valid():
             login_obj = login_serial.save()
 
             if user_serial.is_valid():
-                user_serial.save(LoginId=login_obj)
+                user_serial.save(
+                    LoginId=login_obj,
+                    profile=request.FILES.get("profile")  # ✅ IMPORTANT
+                )
+
                 return Response(
-                    {"status": "success",
-                     "message": "User Registered Successfully",
-                     "user": user_serial.data},
+                    {
+                        "status": "success",
+                        "message": "User Registered Successfully",
+                        "user": user_serial.data
+                    },
                     status=status.HTTP_201_CREATED
                 )
 
-            # delete login if user fails
+            # rollback login if user save fails
             login_obj.delete()
             return Response(
                 {"status": "error", "errors": user_serial.errors},
@@ -1062,19 +1325,33 @@ class SendAck(APIView):
 #         serializer = ComplaintsSerializer1(complaints, many=True)
 #         print(serializer.data)
 #         return Response(serializer.data, status=status.HTTP_200_OK)
+# from django.db.models import Count
+
+# class ViewAllcomplaintsAPI(APIView):
+#     def get(self, request):
+#         complaints = ComplaintsTable.objects.annotate(
+#             total_likes=Count("likes")
+#         ).order_by('-SubmitDate')
+
+#         if not complaints.exists():
+#             return Response(
+#                 {"message": "No complaints found"},
+#                 status=status.HTTP_204_NO_CONTENT
+#             )
+
+#         serializer = ComplaintsSerializer1(complaints, many=True)
+#         return Response(serializer.data, status=status.HTTP_200_OK)
+
 from django.db.models import Count
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
 
 class ViewAllcomplaintsAPI(APIView):
     def get(self, request):
         complaints = ComplaintsTable.objects.annotate(
             total_likes=Count("likes")
         ).order_by('-SubmitDate')
-
-        if not complaints.exists():
-            return Response(
-                {"message": "No complaints found"},
-                status=status.HTTP_204_NO_CONTENT
-            )
 
         serializer = ComplaintsSerializer1(complaints, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -1146,65 +1423,42 @@ class ComplaintCommentAPI(APIView):
             },
             status=status.HTTP_201_CREATED
         )
-class ViewNotification(APIView):
-    def get(self, request, lid):
-        print("###############login#", lid)
-        userid=UserTable.objects.get(LoginId__id=lid)
-        notifications = Notification.objects.filter(ComplaintsId__UserId__LoginId__id=userid)
-        print(notifications)
-        serializer = NotificationSerializer(notifications, many=True)
-        print(serializer.data)
-
-        return Response({
-            "status": "success",
-            "data": serializer.data
-        })
 
 from django.views import View
 from django.shortcuts import render
 from django.db.models import Count
 from .models import ComplaintsTable
 
-
 class AdminDashboardView(View):
     def get(self, request):
-
-        # BASIC COUNTS
+        # BASIC COUNTS - Using __iexact to ensure data retrieval regardless of casing
         total_complaints = ComplaintsTable.objects.count()
-        assignment_pending = ComplaintsTable.objects.filter(Status='pending').count()
-        resolved = ComplaintsTable.objects.filter(Status='resolved').count()
-        fake = ComplaintsTable.objects.filter(Status='fake').count()
+        pending = ComplaintsTable.objects.filter(Status__iexact='pending').count()
+        in_progress = ComplaintsTable.objects.filter(Status__iexact='inprogress').count()
+        resolved = ComplaintsTable.objects.filter(Status__iexact='resolved').count()
 
-        # DEPARTMENT WORKLOAD (ONLY ASSIGNED)
+        # DEPARTMENT WORKLOAD
         dept_qs = (
             ComplaintsTable.objects
             .filter(DepartmentId__isnull=False)
             .values('DepartmentId__DepartmentName')
             .annotate(total=Count('id'))
+            .order_by('-total')
         )
 
-        dept_labels = []
-        dept_values = []
-
-        for row in dept_qs:
-            if row['DepartmentId__DepartmentName']:
-                dept_labels.append(row['DepartmentId__DepartmentName'])
-                dept_values.append(row['total'])
+        dept_labels = [row['DepartmentId__DepartmentName'] for row in dept_qs]
+        dept_values = [row['total'] for row in dept_qs]
 
         context = {
             'total_complaints': total_complaints,
-            'assignment_pending': assignment_pending,
+            'pending': pending,
+            'in_progress': in_progress,
             'resolved': resolved,
-            'fake': fake,
             'dept_labels': dept_labels,
             'dept_values': dept_values,
         }
 
-        return render(
-            request,
-            'Administration/admin_dashboard.html',
-            context
-        )
+        return render(request, 'Administration/admin_dashboard.html', context)
 
 class NotificationListAPI(APIView):
     def get(self, request, lid):
@@ -1226,6 +1480,19 @@ class NotificationListAPI(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+class MarkNotificationReadAPI(APIView):
+    def post(self, request, nid):
+        try:
+            notification = Notification.objects.get(id=nid)
+            notification.is_read = True
+            notification.save(update_fields=["is_read"])
+
+            return Response({"status": "success"})
+        except Notification.DoesNotExist:
+            return Response(
+                {"status": "error", "message": "Not found"},
+                status=404
+            )
 
 # =====================================================
 # IMAGGA IMAGE TAGGING
@@ -1486,19 +1753,41 @@ class SendComplaintCAPI(APIView):
 
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-class ViewProfileAPI(APIView):
-    def get(self, request,id):
-        # userid=UserTable.objects.get(LoginId__id=id)
-        profile = UserTable.objects.filter(LoginId__id=id)
-        print(profile)
-        serializer = UserSerializer(profile, many=True)
-        print(serializer.data)
+# class ViewProfileAPI(APIView):
+#     def get(self, request,id):
+#         # userid=UserTable.objects.get(LoginId__id=id)
+#         profile = UserTable.objects.filter(LoginId__id=id)
+#         print(profile)
+#         serializer = UserSerializer(profile, many=True)
+#         print(serializer.data)
 
-        return Response({
-            "status": "success",
-            "data": serializer.data
-        })
-    
+#         return Response({
+#             "status": "success",
+#             "data": serializer.data
+#         })
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from .models import UserTable
+from .serializers import UserSerializer
+
+class ViewProfileAPI(APIView):
+    def get(self, request, id):
+        try:
+            profile = UserTable.objects.get(LoginId__id=id)
+            serializer = UserSerializer(profile)
+
+            return Response({
+                "status": "success",
+                "data": serializer.data
+            })
+
+        except UserTable.DoesNotExist:
+            return Response({
+                "status": "failed",
+                "message": "User not found"
+            })
+
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -1596,9 +1885,10 @@ class UserPointsAPI(APIView):
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from django.db.models import F
 from .models import UserTable
 from .serializers import LeaderboardSerializer
+
+
 class LeaderboardAPI(APIView):
     def get(self, request, user_id):
         users = UserTable.objects.order_by('-total_points')
@@ -1610,7 +1900,6 @@ class LeaderboardAPI(APIView):
         for index, user in enumerate(users, start=1):
             user.rank = index
 
-            # ✅ FIXED COMPARISON
             if user.LoginId_id == user_id:
                 current_user_rank = index
                 current_user_points = user.total_points
@@ -1619,7 +1908,8 @@ class LeaderboardAPI(APIView):
 
         serializer = LeaderboardSerializer(
             leaderboard_data[:10],
-            many=True
+            many=True,
+            context={"request": request}  # 🔴 REQUIRED for image URL
         )
 
         return Response({
@@ -1629,6 +1919,7 @@ class LeaderboardAPI(APIView):
                 "points": current_user_points
             }
         }, status=status.HTTP_200_OK)
+
 
 
 # class LeaderboardAPI(APIView):
@@ -1663,3 +1954,406 @@ class LeaderboardAPI(APIView):
 # }
 
 #         }, status=status.HTTP_200_OK)
+
+
+
+from django.views import View
+from django.shortcuts import render
+from django.db.models import Count
+from .models import ComplaintsTable
+from django.db.models import Count
+
+class AuthorityAssignedComplaintsView(View):
+    def get(self, request):
+
+        priority = request.GET.get("priority")
+        liked = request.GET.get("liked")
+
+        complaints = (
+            ComplaintsTable.objects
+            .filter(
+                Status="Assigned",
+                EndingDate__isnull=True,
+                DepartmentId__LoginId_id=request.session['loginid']
+            )
+            .annotate(like_count=Count("likes"))
+        )
+
+        # ✅ PRIORITY FILTER
+        if priority and priority != "all":
+            complaints = complaints.filter(Priority=priority)
+
+        # ✅ LIKED FILTER
+        if liked == "most_liked":
+            complaints = complaints.order_by("-like_count")
+        else:
+            complaints = complaints.order_by("-SubmitDate")
+
+        return render(
+            request,
+            "Authority/assigned_complaints.html",
+            {
+                "val": complaints,
+                "selected_priority": priority,
+                "selected_liked": liked
+            }
+        )
+
+        
+
+class AuthorityDateFixedComplaintsView(View):
+    def get(self, request):
+
+        priority = request.GET.get("priority", "all")
+        liked = request.GET.get("liked", "all")
+
+        complaints = (
+            ComplaintsTable.objects
+            .filter(
+                EndingDate__isnull=False,
+                EndingDate__gte=now().date(),
+                Status__in=["Date Fixed", "In Progress", "Extended"],
+                DepartmentId__LoginId_id=request.session['loginid']
+            )
+            .annotate(like_count=Count("likes"))
+        )
+
+        if priority != "all":
+            complaints = complaints.filter(Priority=priority)
+
+        if liked == "most_liked":
+            complaints = complaints.order_by("-like_count")
+        else:
+            complaints = complaints.order_by("EndingDate")
+
+        return render(
+            request,
+            "Authority/date_fixed_complaints.html",
+            {
+                "val": complaints,
+                "selected_priority": priority,
+                "selected_liked": liked
+            }
+        )
+
+
+from django.views import View
+from django.shortcuts import render
+from django.utils.timezone import now
+from django.db.models import Count
+from .models import ComplaintsTable
+
+
+class AuthorityOverdueComplaintsView(View):
+    def get(self, request):
+
+        # ----------------------------
+        # GET FILTER VALUES
+        # ----------------------------
+        priority = request.GET.get("priority", "all")
+        liked = request.GET.get("liked", "all")
+
+        # ----------------------------
+        # BASE QUERY (UNCHANGED LOGIC)
+        # ----------------------------
+        complaints = (
+            ComplaintsTable.objects
+            .filter(
+                EndingDate__lt=now().date(),
+                EndingDate__isnull=False,
+                DepartmentId__LoginId_id=request.session['loginid']
+            )
+            .exclude(Status="Resolved")
+            .annotate(like_count=Count("likes"))
+        )
+
+        # ----------------------------
+        # PRIORITY FILTER (ADDED)
+        # ----------------------------
+        if priority != "all":
+            complaints = complaints.filter(Priority=priority)
+
+        # ----------------------------
+        # LIKES FILTER (ADDED)
+        # ----------------------------
+        if liked == "most_liked":
+            complaints = complaints.order_by("-like_count")
+        else:
+            complaints = complaints.order_by("EndingDate")
+
+        # ----------------------------
+        # RENDER (UNCHANGED)
+        # ----------------------------
+        return render(
+            request,
+            "Authority/overdue_complaints.html",
+            {
+                "val": complaints,
+                "selected_priority": priority,
+                "selected_liked": liked
+            }
+        )
+
+from django.views import View
+from django.shortcuts import redirect, get_object_or_404
+from django.utils.timezone import now
+from .models import ComplaintsTable, TimeLineTable
+
+# class AuthorityExtendDeadlineView(View):
+#     def post(self, request, cid):
+#         new_date = request.POST.get("new_date")
+#         reason = request.POST.get("reason")
+
+#         complaint = get_object_or_404(
+#             ComplaintsTable,
+#             id=cid,
+#             DepartmentId__LoginId_id=request.session['loginid']
+#         )
+
+#         complaint.EndingDate = new_date
+#         complaint.Status = "In Progress"
+#         complaint.save(update_fields=["EndingDate", "Status"])
+
+#         TimeLineTable.objects.create(
+#             ComplaintId=complaint,
+#             Status="Extended",
+#             EndingDate=new_date,
+#             Remark=reason
+#         )
+
+#         return redirect("/authority/date-fixed-complaints/")
+class AuthorityExtendDeadlineView(View):
+    def post(self, request, cid):
+        new_date = request.POST.get("new_date")
+        reason = request.POST.get("reason")
+
+        complaint = get_object_or_404(
+            ComplaintsTable,
+            id=cid,
+            DepartmentId__LoginId_id=request.session['loginid']
+        )
+
+        # ✅ STORE EXTENDED IN COMPLAINT TABLE
+        complaint.EndingDate = new_date
+        complaint.Status = "Extended"
+        complaint.save(update_fields=["EndingDate", "Status"])
+
+        # timeline
+        TimeLineTable.objects.create(
+            ComplaintId=complaint,
+            Status="Extended",
+            EndingDate=new_date,
+            Remark=reason
+        )
+
+        return redirect("/authority/date-fixed-complaints/")
+    
+from django.views import View
+from django.shortcuts import render
+from django.utils.timezone import now
+from django.db.models import Count
+from .models import ComplaintsTable
+
+class AuthorityDashboardView(View):
+    def get(self, request):
+        # Retrieve the logged-in Authority's ID from session
+        authority_id = request.session.get('loginid')
+        today = now().date()
+
+        # 1. Base Query: Filter complaints strictly for this authority's department
+        complaints = ComplaintsTable.objects.filter(
+            DepartmentId__LoginId_id=authority_id
+        )
+
+        # 2. Metric Calculations
+        total_count = complaints.count()
+        
+        # Assigned but no deadline set
+        assigned = complaints.filter(Status__iexact="Assigned", EndingDate__isnull=True).count()
+
+        # Currently being worked on within deadline
+        active = complaints.filter(
+            EndingDate__gte=today,
+            Status__in=["Date Fixed", "In Progress", "Inprogress"]
+        ).count()
+
+        # Past deadline and not yet resolved
+        overdue = complaints.filter(
+            EndingDate__lt=today
+        ).exclude(Status__iexact="Resolved").count()
+
+        # Successfully finished
+        resolved = complaints.filter(Status__iexact="Resolved").count()
+
+        # 3. Workload by Priority (Using the field confirmed in your FieldError)
+        # We group by priority to show the authority the level of urgency in their queue
+        priority_qs = (
+            complaints.exclude(Status__iexact="Resolved")
+            .values('Priority')
+            .annotate(total=Count('id'))
+            .order_by('-total')
+        )
+        
+        pri_labels = [row['Priority'] for row in priority_qs if row['Priority']]
+        pri_values = [row['total'] for row in priority_qs if row['Priority']]
+
+        context = {
+            "total": total_count,
+            "assigned": assigned,
+            "active": active,
+            "overdue": overdue,
+            "resolved": resolved,
+            "pri_labels": pri_labels,
+            "pri_values": pri_values,
+        }
+
+        return render(request, "Authority/dashboard.html", context)
+from django.utils import timezone
+from datetime import timedelta
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .models import (
+    ComplaintsTable,
+    ComplaintLike,
+    ComplaintComment
+)
+from .serializers import ComplaintsSerializer1
+
+
+class TrendingComplaintsAPI(APIView):
+    def get(self, request):
+        now = timezone.now()
+
+        complaints = ComplaintsTable.objects.filter(
+            SubmitDate__gte=now - timedelta(days=7)
+        )
+
+        trending_list = []
+
+        for complaint in complaints:
+            likes_count = ComplaintLike.objects.filter(
+                ComplaintId=complaint
+            ).count()
+
+            comments_count = ComplaintComment.objects.filter(
+                ComplaintId=complaint
+            ).count()
+
+            hours_since_post = (
+                now - complaint.SubmitDate
+            ).total_seconds() / 3600
+
+            if likes_count == 0 and comments_count == 0:
+                score = 1 / (hours_since_post + 1)
+            else:
+                score = (likes_count * 1.5 + comments_count) / (hours_since_post + 2)
+
+            trending_list.append({
+                "complaint": complaint,
+                "score": score
+            })
+
+        trending_list.sort(
+            key=lambda x: x["score"],
+            reverse=True
+        )
+
+        top_complaints = [
+            item["complaint"] for item in trending_list[:3]
+        ]
+
+        serializer = ComplaintsSerializer1(top_complaints, many=True)
+
+        return Response(
+            {
+                "status": "success",
+                "count": len(top_complaints),
+                "data": serializer.data
+            },
+            status=status.HTTP_200_OK
+        )
+
+from django.views import View
+from django.shortcuts import render
+from django.db.models import OuterRef, Subquery, Exists
+from .models import (
+    ComplaintsTable,
+    AssignWork,
+    DepartmentsTable,
+    TimeLineTable
+)
+
+class AssignDecisionPage(View):
+    def get(self, request):
+
+        assign_date = AssignWork.objects.filter(
+            ComplaintId=OuterRef('pk')
+        ).values('EndingDate')[:1]
+
+        complaints = ComplaintsTable.objects.annotate(
+            final_deadline=Subquery(assign_date),
+            deadline_changed=Exists(
+                TimeLineTable.objects.filter(
+                    ComplaintId=OuterRef('pk'),
+                    Status="Requested"
+                )
+            )
+        )
+
+        assigned_ids = AssignWork.objects.values_list(
+            'ComplaintId_id', flat=True
+        )
+
+        # 🎯 ONLY complaints waiting for decision
+        complaints = complaints.filter(
+            Status="pending"
+        ).exclude(
+            id__in=assigned_ids
+        )
+
+        department_id = request.GET.get("department")
+        if department_id and department_id != "all":
+            complaints = complaints.filter(
+                DepartmentId_id=department_id
+            )
+
+        return render(
+            request,
+            "Administration/assign_decision.html",
+            {
+                "val": complaints,
+                "departments": DepartmentsTable.objects.all(),
+                "selected_department": department_id,
+            }
+        )
+
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+from cityApp.models import UserTable
+
+class UpdateProfileAPI(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request, id):
+        user = get_object_or_404(UserTable, LoginId__id=id)
+
+        user.Name = request.data.get("Name", user.Name)
+        user.PhoneNo = request.data.get("PhoneNo", user.PhoneNo)
+        user.Address = request.data.get("Address", user.Address)
+
+        if request.FILES.get("profile"):
+            user.profile = request.FILES.get("profile")
+
+        user.save()
+
+        return Response(
+            {
+                "status": "success",
+                "message": "Profile updated successfully"
+            },
+            status=status.HTTP_200_OK
+        )

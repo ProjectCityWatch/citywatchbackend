@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Update Complaint Status</title>
+    <title>Complaints Overview</title>
 
     <style>
         * {
@@ -21,12 +21,40 @@
 
         h2 {
             text-align: center;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             font-size: 26px;
             font-weight: 600;
         }
 
-        /* WRAPPER */
+        /* FILTER BAR */
+        .filter-bar {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 25px;
+        }
+
+        select, button {
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: #020617;
+            color: #e5e7eb;
+            border: 1px solid #334155;
+            font-size: 14px;
+        }
+
+        button {
+            background: #2563eb;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        /* TABLE WRAPPER */
         .table-wrapper {
             background: #020617;
             border: 1px solid #1e293b;
@@ -37,7 +65,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 1400px;
+            min-width: 1500px;
         }
 
         thead {
@@ -62,37 +90,20 @@
             border-right: 1px solid #1e293b;
         }
 
-        /* Alternate rows */
-        tbody tr:nth-child(even) {
-            background: #020617;
-        }
+        tbody tr:nth-child(even) { background: #020617; }
+        tbody tr:nth-child(odd) { background: #0b1220; }
+        tbody tr:hover { background: #0f172a; }
 
-        tbody tr:nth-child(odd) {
-            background: #0b1220;
-        }
-
-        tbody tr:hover {
-            background: #0f172a;
-        }
-
-        /* Description */
         td:nth-child(4) {
             text-align: left;
             line-height: 1.6;
         }
 
-        /* IMAGE */
-        img {
+        img, iframe {
             border-radius: 6px;
             border: 1px solid #334155;
         }
 
-        iframe {
-            border-radius: 6px;
-            border: 1px solid #334155;
-        }
-
-        /* LINKS */
         a {
             color: #60a5fa;
             text-decoration: none;
@@ -112,70 +123,72 @@
             display: inline-block;
         }
 
-        .Pending { background: #7c2d12; color: #fed7aa; }
+        .Assigned   { background: #14532d; color: #bbf7d0; }
+        .DateFixed  { background: #78350f; color: #fde68a; }
+        .Extended   { background: #7c2d12; color: #fde68a; }
         .InProgress { background: #1e3a8a; color: #bfdbfe; }
-        .Resolved { background: #14532d; color: #bbf7d0; }
-        .Extended { background: #7c2d12; color: #fde68a; }
+        .Resolved   { background: #4c1d95; color: #ddd6fe; }
 
-        /* DEADLINE */
         .deadline {
             color: #fb7185;
             font-weight: 600;
         }
 
-        /* FORMS */
-        select, input[type="date"] {
-            width: 100%;
-            padding: 6px;
-            border-radius: 6px;
-            background: #020617;
-            border: 1px solid #334155;
-            color: #e5e7eb;
-            margin-bottom: 6px;
-            font-size: 13px;
-        }
-
-        button, input[type="submit"] {
-            width: 100%;
-            padding: 7px;
-            border-radius: 6px;
-            background: #2563eb;
-            color: white;
+        .likes {
             font-weight: 600;
-            border: none;
-            cursor: pointer;
+            color: #facc15;
         }
+        .fake {
+    background: #7f1d1d;
+    color: #fecaca;
+}
 
-        button:hover, input[type="submit"]:hover {
-            background: #1d4ed8;
-        }
-
-        /* ACTION CELL */
-        td:last-child {
-            background: #020617;
-        }
     </style>
 </head>
 
 <body>
 
-<h2>Update Complaint Status</h2>
+<h2>Complaints Overview</h2>
+
+<!-- FILTER BAR -->
+<form method="get" class="filter-bar">
+    <select name="status">
+        <option value="all">All Status</option>
+        <option value="Resolved" {% if selected_status == "Resolved" %}selected{% endif %}>Resolved</option>
+        <option value="In Progress" {% if selected_status == "In Progress" %}selected{% endif %}>In Progress</option>
+        <option value="Extended" {% if selected_status == "Extended" %}selected{% endif %}>Extended</option>
+        <option value="Date Fixed" {% if selected_status == "Date Fixed" %}selected{% endif %}>Date Fixed</option>
+        <option value="Assigned" {% if selected_status == "Assigned" %}selected{% endif %}>Assigned</option>
+        <option value="fake" {% if selected_status == "fake" %}selected{% endif %}>
+        Fake
+    </option>
+    </select>
+
+    <select name="priority">
+        <option value="all">All Priority</option>
+        <option value="High" {% if selected_priority == "High" %}selected{% endif %}>High</option>
+        <option value="Medium" {% if selected_priority == "Medium" %}selected{% endif %}>Medium</option>
+        <option value="Low" {% if selected_priority == "Low" %}selected{% endif %}>Low</option>
+    </select>
+
+    <button type="submit">Filter</button>
+</form>
 
 <div class="table-wrapper">
 <table>
     <thead>
         <tr>
             <th>User</th>
-            <th>Department</th>
-            <th>Category</th>
+            
+            
             <th>Description</th>
             <th>Priority</th>
+            <th>Likes</th>
             <th>Image</th>
             <th>Location</th>
             <th>Map</th>
             <th>Deadline</th>
             <th>Status</th>
-            <th>Action</th>
         </tr>
     </thead>
 
@@ -183,10 +196,12 @@
     {% for i in val %}
     <tr>
         <td>{{ i.UserId.Name }}</td>
-        <td>{{ i.DepartmentId.DepartmentName }}</td>
-        <td>{{ i.Category }}</td>
+        
+        
         <td>{{ i.Description }}</td>
         <td>{{ i.Priority }}</td>
+
+        <td class="likes">👍 {{ i.like_count }}</td>
 
         <td>
             {% if i.Image %}
@@ -205,43 +220,17 @@
             </iframe>
         </td>
 
-{% if not i.EndingDate and i.Status == 'Assigned' %}
-        <td>
-            <form method="post" action="{% url 'request_ending_date' %}">
-                {% csrf_token %}
-                <input type="hidden" name="complaint_id" value="{{ i.id }}">
-                <input type="date" name="date" required>
-                <input type="submit" value="Request">
-            </form>
-        </td>
-{% else %}
         <td>
             <div class="deadline">{{ i.EndingDate }}</div>
-            {% if i.Status == 'Extended' %}
-                <a href="/updatedeadline/{{i.id}}">Update</a>
-            {% endif %}
-        </td>
-{% endif %}
-
-        <td>
-            <span class="status {{ i.Status|cut:' ' }}">
-                {{ i.Status }}
-            </span>
         </td>
 
         <td>
-            <form method="post" action="/UpdateStatus/{{ i.id }}">
-                {% csrf_token %}
-                <select name="status">
-                    <option value="Pending" {% if i.Status == "Pending" %}selected{% endif %}>Pending</option>
-                    <option value="In Progress" {% if i.Status == "In Progress" %}selected{% endif %}>In Progress</option>
-                    <option value="Resolved" {% if i.Status == "Resolved" %}selected{% endif %}>Resolved</option>
-                    <option value="Extended" {% if i.Status == "Extended" %}selected{% endif %}>Extended</option>
-                </select>
-                <input type="hidden" name="complaint_id" value="{{ i.id }}">
-                <button type="submit">Update</button>
-            </form>
+            <span class="status {{ i.Status|cut:' ' }}">{{ i.Status }}</span>
         </td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="11">No complaints found 🎉</td>
     </tr>
     {% endfor %}
     </tbody>

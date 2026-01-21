@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -125,6 +125,223 @@
             </tbody>
         </table>
     </div>
+
+</body>
+</html> -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Users | CityWatch Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-blue: #38bdf8;
+            --bg-dark: #020617;
+            --glass: rgba(255, 255, 255, 0.03);
+            --glass-hover: rgba(255, 255, 255, 0.07);
+            --border: rgba(255, 255, 255, 0.08);
+            --danger: #ef4444;
+            --success: #22c55e;
+            --warning: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Inter", "Segoe UI", sans-serif;
+        }
+
+        body {
+            background: radial-gradient(circle at top right, #0f172a, #020617);
+            color: #f1f5f9;
+            padding: 40px;
+            min-height: 100vh;
+        }
+
+        /* ---------------- HEADER & SEARCH ---------------- */
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .search-box {
+            position: relative;
+            flex: 1;
+            max-width: 400px;
+        }
+
+        .search-box input {
+            width: 100%;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            padding: 12px 18px 12px 45px;
+            border-radius: 12px;
+            color: white;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        .search-box input:focus {
+            border-color: var(--primary-blue);
+            background: rgba(255,255,255,0.06);
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+        }
+
+        /* ---------------- TABLE ---------------- */
+        .table-container {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 18px 24px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--primary-blue);
+            text-align: left;
+        }
+
+        td {
+            padding: 18px 24px;
+            font-size: 14px;
+            border-bottom: 1px solid var(--border);
+            color: #cbd5e1;
+        }
+
+        .user-id-badge {
+            font-family: monospace;
+            background: rgba(255,255,255,0.05);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #94a3b8;
+        }
+
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 700;
+        }
+
+        .btn-action {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: 0.2s;
+        }
+
+        .btn-block { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2); }
+        .btn-block:hover { background: var(--danger); color: white; }
+        
+        .btn-unblock { background: rgba(34, 197, 94, 0.1); color: var(--success); border: 1px solid rgba(34, 197, 94, 0.2); }
+        .btn-unblock:hover { background: var(--success); color: white; }
+    </style>
+</head>
+
+<body>
+
+    <div class="header-section">
+        <div>
+            <h2 style="font-size: 24px;"><i class="fa-solid fa-users-gear" style="color: var(--primary-blue);"></i> Manage Users</h2>
+            <p style="color: #64748b; font-size: 13px; margin-top: 5px;">Monitor citizen activity and account status</p>
+        </div>
+
+        <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="userInput" onkeyup="searchUsers()" placeholder="Search by name, email or ID...">
+        </div>
+        
+        <a href="/adminhome" style="color: #94a3b8; text-decoration: none; font-size: 14px;"><i class="fa-solid fa-house"></i> Home</a>
+    </div>
+
+    <div class="table-container">
+        <table id="userTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>User Details</th>
+                    <th>Contact</th>
+                    <th>Warnings</th>
+                    <th>Points</th>
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in val %}
+                <tr>
+                    <td><span class="user-id-badge">{{ i.id }}</span></td>
+                    <td><strong style="color: white;">{{ i.Name }}</strong></td>
+                    <td>
+                        <div style="font-size: 13px;">
+                            <i class="fa-solid fa-envelope" style="width: 18px; color: #475569;"></i> {{ i.Email }}<br>
+                            <i class="fa-solid fa-phone" style="width: 18px; color: #475569;"></i> {{ i.PhoneNo }}
+                        </div>
+                    </td>
+                    <td><span class="badge-warning">{{ i.warnings }}</span></td>
+                    <td style="color: var(--primary-blue); font-weight: 700;">{{ i.total_points }}</td>
+                    <td style="text-align: right;">
+                        {% if i.LoginId.UserType == "USER" %}
+                            <a href="/BlockUser/{{ i.LoginId.id }}" class="btn-action btn-block"><i class="fa-solid fa-ban"></i> Block</a>
+                        {% elif i.LoginId.UserType == "Blocked" %}
+                            <a href="/UnblockUser/{{ i.LoginId.id }}" class="btn-action btn-unblock"><i class="fa-solid fa-check"></i> Unblock</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        function searchUsers() {
+            var input, filter, table, tr, td, i, txtValue;
+            input = document.getElementById("userInput");
+            filter = input.value.toUpperCase();
+            table = document.getElementById("userTable");
+            tr = table.getElementsByTagName("tr");
+
+            for (i = 1; i < tr.length; i++) {
+                // Search across Name (col 1), Email (col 2), and ID (col 0)
+                txtValue = tr[i].textContent || tr[i].innerText;
+                if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                    tr[i].style.display = "";
+                } else {
+                    tr[i].style.display = "none";
+                }
+            }
+        }
+    </script>
 
 </body>
 </html>

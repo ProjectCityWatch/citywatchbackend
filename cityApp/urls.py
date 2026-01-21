@@ -17,14 +17,20 @@ urlpatterns = [
     path('manage-users/', ManageUsersView.as_view(), name='manage_users'),
     path('BlockUser/<int:l_id>', BlockUser.as_view(), name='BlockUser'),
     path('UnblockUser/<int:l_id>', UnblockUser.as_view(), name='UnblockUser'),
-    path('notification/', NotificationView.as_view(), name='notification'),
-    path('send-notifications/', SendNotificationsView.as_view(), name='send_notifications'),
+    
+    
 
     path('submit-work/<int:id>/', SubmitWorkView.as_view(), name='submit_work'),
     path('feedbackview/', ViewFeedback.as_view(), name='ViewFeedback'),
     path('viewcomplaints/', ViewComplaints.as_view(), name='viewcomplaints'),
     path('mark-fake/<int:c_id>/', MarkFakeComplaint.as_view(), name='mark_fake'),
     path('admin-dashboard/', AdminDashboardView.as_view(), name='admin-dashboard'),
+    path(
+    'assign-decision/',
+    AssignDecisionPage.as_view(),
+    name='assign_decision'
+),
+
 
       # --- AUTHORITY ---
     path('authorityhome/', AuthorityHomeView.as_view(), name='authorityhome'),
@@ -38,6 +44,41 @@ urlpatterns = [
     path('request_ending_date',request_ending_date.as_view(),name='request_ending_date'),
     path('UpdateStatus/<int:c_id>', UpdateStatus.as_view(), name="UpdateStatus"),
     path('updatedeadline/<int:id>', UpdateDeadlineView.as_view(), name='updatedeadline'),
+    path(
+    "authority/assigned-complaints/",
+    AuthorityAssignedComplaintsView.as_view(),
+    name="authority_assigned_complaints"
+),
+path(
+    "authority/date-fixed-complaints/",
+    AuthorityDateFixedComplaintsView.as_view(),
+    name="authority_date_fixed_complaints"
+),
+path(
+    "authority/overdue-complaints/",
+    AuthorityOverdueComplaintsView.as_view(),
+    name="authority_overdue_complaints"
+),
+path(
+    "authority/extend-deadline/<int:cid>/",
+    AuthorityExtendDeadlineView.as_view(),
+    name="authority_extend_deadline"
+),
+path(
+    "authority/dashboard/",
+    AuthorityDashboardView.as_view(),
+    name="authority_dashboard"
+),
+path(
+    'authority/mark-fake/<int:c_id>/',
+    AuthorityMarkFakeComplaint.as_view(),
+    name='authority_mark_fake'
+),
+
+
+
+
+
 
 
 
@@ -53,7 +94,20 @@ urlpatterns = [
     path('ComplaintCommentAPI/<int:lid>',ComplaintCommentAPI.as_view(),name='ComplaintCommentAPI'),
 
     path('api/notifications/<int:lid>/', NotificationListAPI.as_view(), name='api_notifications'),
+    path(
+    'api/notifications/read/<int:nid>/',
+    MarkNotificationReadAPI.as_view(),
+    name='mark_notification_read'
+),
     path('viewprofile/<int:id>', ViewProfileAPI.as_view(), name='viewprofile'),
     path("UserPointsAPI/<int:login_id>/", UserPointsAPI.as_view()),
     path('leaderboard/<int:user_id>/', LeaderboardAPI.as_view()),
+    path(
+    'trending-complaints/',
+    TrendingComplaintsAPI.as_view(),
+    name='trending_complaints'
+),
+path("updateprofile/<int:id>/", UpdateProfileAPI.as_view()),
+
+
 ]

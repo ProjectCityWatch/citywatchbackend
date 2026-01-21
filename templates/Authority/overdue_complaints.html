@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Overdue Complaints</title>
+
+    <style>
+        body {
+            background: #020617;
+            color: #e5e7eb;
+            padding: 30px;
+            font-family: Inter, Arial, sans-serif;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #fb7185;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1450px;
+        }
+
+        th, td {
+            padding: 12px;
+            border: 1px solid #1e293b;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        th {
+            color: #fca5a5;
+        }
+
+        tbody tr {
+            background: #0b1220;
+        }
+
+        tbody tr:hover {
+            background: #0f172a;
+        }
+
+        img {
+            border-radius: 6px;
+            border: 1px solid #334155;
+        }
+
+        .deadline {
+            color: #fb7185;
+            font-weight: 700;
+        }
+
+        input[type="date"], textarea {
+            width: 100%;
+            padding: 6px;
+            background: #020617;
+            color: #e5e7eb;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        button {
+            width: 100%;
+            padding: 8px;
+            background: #dc2626;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        button:hover {
+            background: #b91c1c;
+        }
+        /* ================= FILTER BAR ================= */
+.filter-bar {
+    background: #0b1220;
+    padding: 18px 22px;
+    border: 1px solid #1e293b;
+    border-radius: 14px;
+    margin-bottom: 25px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 180px;
+}
+
+.filter-group label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #fca5a5;
+}
+
+.filter-group select {
+    padding: 9px 12px;
+    font-size: 14px;
+    border-radius: 8px;
+    background: #020617;
+    border: 1px solid #334155;
+    color: #e5e7eb;
+}
+
+.filter-bar button {
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 8px;
+    background: #dc2626;
+    border: none;
+    color: white;
+    cursor: pointer;
+    height: 34px;
+    width: auto;
+    white-space: nowrap;
+    margin-top: 18px;
+}
+
+.filter-bar button:hover {
+    background: #b91c1c;
+}
+
+    </style>
+</head>
+
+<body>
+
+<h2>Overdue Complaints (Deadline Missed)</h2>
+<!-- ================= FILTER BAR ================= -->
+<form method="get" class="filter-bar">
+
+    <div class="filter-group">
+        <label>Priority</label>
+        <select name="priority">
+            <option value="all">All</option>
+            <option value="High" {% if selected_priority == "High" %}selected{% endif %}>High</option>
+            <option value="Medium" {% if selected_priority == "Medium" %}selected{% endif %}>Medium</option>
+            <option value="Low" {% if selected_priority == "Low" %}selected{% endif %}>Low</option>
+        </select>
+    </div>
+
+    <div class="filter-group">
+        <label>Likes</label>
+        <select name="liked">
+            <option value="all">All</option>
+            <option value="most_liked" {% if selected_liked == "most_liked" %}selected{% endif %}>
+                Most Liked
+            </option>
+        </select>
+    </div>
+
+    <button type="submit">Apply Filters</button>
+
+</form>
+
+<table>
+    <thead>
+        <tr>
+            <th>User</th>
+            
+            <th>Description</th>
+            <th>Priority</th>
+            <th>Image</th>
+            <th>Location</th>
+            <th>Likes</th>
+            <th>Old Deadline</th>
+            <th>Extend Deadline</th>
+        </tr>
+    </thead>
+
+    <tbody>
+    {% for i in val %}
+        <tr>
+            <td>{{ i.UserId.Name }}</td>
+            
+            <td style="text-align:left">{{ i.Description }}</td>
+            <td>{{ i.Priority }}</td>
+
+            <td>
+                {% if i.Image %}
+                    <img src="{{ i.Image.url }}" width="90" height="70">
+                {% else %}
+                    No Image
+                {% endif %}
+            </td>
+
+            <td>
+                {{ i.Latitude }}, {{ i.Longitude }} <br>
+                <a href="https://www.google.com/maps?q={{ i.Latitude }},{{ i.Longitude }}"
+                   target="_blank">Open</a>
+            </td>
+
+            <td>👍 {{ i.like_count }}</td>
+
+            <td class="deadline">{{ i.EndingDate }}</td>
+
+            <td>
+                <form method="post" action="/authority/extend-deadline/{{ i.id }}/">
+                    {% csrf_token %}
+                    <input type="date" name="new_date" required>
+                    <textarea name="reason" placeholder="Reason for extension" required></textarea>
+                    <button type="submit">Extend</button>
+                </form>
+            </td>
+        </tr>
+    {% empty %}
+        <tr>
+            <td colspan="9">No overdue complaints 🎉</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+</body>
+</html>

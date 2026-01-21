@@ -12,8 +12,10 @@ class LoginTable(models.Model):
 class UserTable(models.Model):
     LoginId = models.ForeignKey(LoginTable, on_delete=models.CASCADE)
     Name = models.CharField(max_length=30, null=True, blank=True)
+    profile = models.FileField(null=True, blank=True)
     PhoneNo = models.CharField(max_length=10, null=True, blank=True)
     Email = models.CharField(max_length=30, unique=True, null=True, blank=True)
+    Address = models.CharField(max_length=255, null=True, blank=True)
     warnings = models.IntegerField(default=0)
     total_points = models.IntegerField(default=0)
 
@@ -70,6 +72,7 @@ class Notification(models.Model):
     ComplaintsId=models.ForeignKey(ComplaintsTable,on_delete=models.CASCADE,null=True,blank=True)
     Date = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, null=True, blank=True)
+    is_read = models.BooleanField(default=False)
 
 class ComplaintLike(models.Model):
     ComplaintId = models.ForeignKey(ComplaintsTable,on_delete=models.CASCADE, related_name="likes")

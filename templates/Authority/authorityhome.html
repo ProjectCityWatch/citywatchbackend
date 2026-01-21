@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -81,12 +81,317 @@
 
     <div class="menu">
         <a href="/viewcomplaintsview">View User Complaints</a>
-        <!-- <a href="/update">Update Complaint Status</a> -->
-        <a href="/viewfeedback">View User Feedback</a>
+       
+        
         <a href="/authorityprofile">View Profile</a>
-        <a href="">Chat with User</a>
+        
+        <a href="/authority/assigned-complaints/">Assigned Complaints (Set Deadline)</a>
+        <a href="/authority/date-fixed-complaints/">Active Complaints (Date Fixed)</a>
+        <a href="/authority/overdue-complaints/">
+    Overdue Complaints (Extend Deadline)
+</a>
+<a href="/authority/dashboard/">📊 Dashboard</a>
+
     </div>
 </div>
+
+</body>
+</html> -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CityWatch | Authority Command Center</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Inter", "Segoe UI", sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #020617 0%, #0f172a 100%);
+            color: #f1f5f9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        /* Header Area */
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            letter-spacing: 2px;
+            color: #38bdf8;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #94a3b8;
+            font-size: 14px;
+        }
+
+        /* Stats Row - Gives the dashboard a "Smarter City" feel */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 900px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 20px;
+            border-radius: 16px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-card i {
+            font-size: 24px;
+            color: #38bdf8;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .number {
+            display: block;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .stat-card .label {
+            font-size: 12px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Main Menu Container */
+        .dashboard-container {
+            width: 100%;
+            max-width: 900px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #f8fafc;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title::after {
+            content: "";
+            height: 1px;
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Menu Grid */
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            text-decoration: none;
+            color: #e2e8f0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .menu-item i {
+            width: 45px;
+            height: 45px;
+            background: rgba(56, 189, 248, 0.1);
+            color: #38bdf8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            font-size: 18px;
+            transition: 0.3s;
+        }
+
+        .menu-item .text-content {
+            flex: 1;
+        }
+
+        .menu-item span {
+            display: block;
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .menu-item small {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        /* Hover States */
+        .menu-item:hover {
+            background: rgba(56, 189, 248, 0.08);
+            border-color: #38bdf8;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .menu-item:hover i {
+            background: #38bdf8;
+            color: #020617;
+            transform: rotate(-5deg);
+        }
+
+        /* Highlight variant for Analytics */
+        .menu-item.highlight {
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.1), transparent);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+
+        @media (max-width: 600px) {
+            .dashboard-container { padding: 20px; }
+            .menu-grid { grid-template-columns: 1fr; }
+        }
+        .stats-grid a {
+    transition: transform 0.2s ease;
+    display: block;
+}
+
+.stats-grid a:hover {
+    transform: translateY(-5px); /* Lift effect when hovering over the stats */
+}
+
+.stat-card {
+    cursor: pointer; /* Shows the hand icon so users know they can click */
+}
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <h1>CityWatch</h1>
+        <p>Authority Command Center &bull; Live Operations</p>
+    </div>
+
+<div class="stats-grid">
+    <a href="/authority/assigned-complaints/" style="text-decoration: none; color: inherit;">
+        <div class="stat-card">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span class="number">{{ new_count }}</span>
+            <span class="label">New Reports</span>
+        </div>
+    </a>
+
+    <a href="/authority/overdue-complaints/" style="text-decoration: none; color: inherit;">
+        <div class="stat-card">
+            <i class="fa-solid fa-clock"></i>
+            <span class="number">{{ overdue_count }}</span>
+            <span class="label">Overdue</span>
+        </div>
+    </a>
+
+    <a href="/viewcomplaintsview?status=Resolved" style="text-decoration: none; color: inherit;">
+        <div class="stat-card">
+            <i class="fa-solid fa-check-double"></i>
+            <span class="number">{{ resolved_count }}</span>
+            <span class="label">Resolved</span>
+        </div>
+    </a>
+</div>
+
+    <div class="dashboard-container">
+        
+        <div class="section-title">
+            <i class="fa-solid fa-layer-group"></i> Operations Management
+        </div>
+
+        <div class="menu-grid">
+            <a href="/viewcomplaintsview" class="menu-item">
+                <i class="fa-solid fa-list-ul"></i>
+                <div class="text-content">
+                    <span>Inbox</span>
+                    <small>All incoming user complaints</small>
+                </div>
+            </a>
+
+            <a href="/authority/assigned-complaints/" class="menu-item">
+                <i class="fa-solid fa-calendar-plus"></i>
+                <div class="text-content">
+                    <span>Set Deadlines</span>
+                    <small>Assign timelines to complaints</small>
+                </div>
+            </a>
+
+            <a href="/authority/date-fixed-complaints/" class="menu-item">
+                <i class="fa-solid fa-person-digging"></i>
+                <div class="text-content">
+                    <span>Active Work</span>
+                    <small>Complaints with fixed dates</small>
+                </div>
+            </a>
+
+            <a href="/authority/overdue-complaints/" class="menu-item">
+                <i class="fa-solid fa-hourglass-alert"></i>
+                <div class="text-content">
+                    <span>Crisis Management</span>
+                    <small>Extend overdue deadlines</small>
+                </div>
+            </a>
+        </div>
+
+        <div style="margin-top: 40px;" class="section-title">
+            <i class="fa-solid fa-user-gear"></i> System & Personal
+        </div>
+
+        <div class="menu-grid">
+            <a href="/authority/dashboard/" class="menu-item highlight">
+                <i class="fa-solid fa-chart-pie"></i>
+                <div class="text-content">
+                    <span>Analytics Dashboard</span>
+                    <small>View performance metrics</small>
+                </div>
+            </a>
+
+            <a href="/authorityprofile" class="menu-item">
+                <i class="fa-solid fa-id-card"></i>
+                <div class="text-content">
+                    <span>Official Profile</span>
+                    <small>Manage your credentials</small>
+                </div>
+            </a>
+        </div>
+
+    </div>
 
 </body>
 </html>

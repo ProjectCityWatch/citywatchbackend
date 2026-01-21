@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Assigned Complaints</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Inter", "Segoe UI", Arial, sans-serif;
+        }
+
+        body {
+            background: #020617;
+            color: #e5e7eb;
+            padding: 30px;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 24px;
+            font-size: 26px;
+            font-weight: 600;
+        }
+
+        /* ================= FILTER BAR (IMPROVED) ================= */
+        .filter-bar {
+            background: #0b1220;
+            padding: 18px 22px;
+            border: 1px solid #1e293b;
+            border-radius: 14px;
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 18px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 180px;
+        }
+
+        .filter-group label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #cbd5f5;
+        }
+
+        .filter-group select {
+            padding: 9px 12px;
+            font-size: 14px;
+            border-radius: 8px;
+            background: #020617;
+            border: 1px solid #334155;
+            color: #e5e7eb;
+        }
+
+        .filter-group select:focus {
+            outline: none;
+            border-color: #2563eb;
+        }
+
+        .filter-bar button {
+    padding: 6px 14px;   /* smaller */
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 8px;
+    background: #2563eb;
+    border: none;
+    color: white;
+    cursor: pointer;
+    height: 34px;        /* smaller height */
+    width: auto;         /* KEY FIX */
+    white-space: nowrap;
+    margin-top: 18px; /* prevent stretching */
+}
+
+
+        .filter-bar button:hover {
+            background: #1d4ed8;
+        }
+
+        /* ================= TABLE ================= */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1300px;
+        }
+
+        th, td {
+            padding: 12px;
+            border: 1px solid #1e293b;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        th {
+            color: #93c5fd;
+            background: #020617;
+            white-space: nowrap;
+        }
+
+        tbody tr:nth-child(odd) {
+            background: #0b1220;
+        }
+
+        tbody tr:nth-child(even) {
+            background: #020617;
+        }
+
+        tbody tr:hover {
+            background: #0f172a;
+        }
+
+        img {
+            border-radius: 6px;
+            border: 1px solid #334155;
+        }
+
+        a {
+            color: #60a5fa;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        input[type="date"] {
+            width: 100%;
+            padding: 6px;
+            background: #020617;
+            color: #e5e7eb;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            margin-bottom: 6px;
+        }
+
+        button {
+            width: 100%;
+            padding: 7px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>Assigned Complaints (Deadline Pending)</h2>
+
+<!-- ================= FILTER BAR ================= -->
+<form method="get" class="filter-bar">
+
+    <div class="filter-group">
+        <label>Priority</label>
+        <select name="priority">
+            <option value="all">All</option>
+            <option value="High" {% if selected_priority == "High" %}selected{% endif %}>High</option>
+            <option value="Medium" {% if selected_priority == "Medium" %}selected{% endif %}>Medium</option>
+            <option value="Low" {% if selected_priority == "Low" %}selected{% endif %}>Low</option>
+        </select>
+    </div>
+
+    <div class="filter-group">
+        <label>Likes</label>
+        <select name="liked">
+            <option value="all">All</option>
+            <option value="most_liked" {% if selected_liked == "most_liked" %}selected{% endif %}>
+                Most Liked
+            </option>
+        </select>
+    </div>
+
+    <button type="submit">Apply Filters</button>
+
+</form>
+
+<!-- ================= TABLE ================= -->
+<table>
+    <thead>
+        <tr>
+            <th>User</th>
+            
+            <th>Description</th>
+            <th>Priority</th>
+            <th>Image</th>
+            <th>Location</th>
+            <th>Likes</th>
+            <th>Set Deadline</th>
+        </tr>
+    </thead>
+
+    <tbody>
+    {% for i in val %}
+        <tr>
+            <td>{{ i.UserId.Name }}</td>
+            
+            <td style="text-align:left">{{ i.Description }}</td>
+            <td>{{ i.Priority }}</td>
+
+            <td>
+                {% if i.Image %}
+                    <img src="{{ i.Image.url }}" width="90" height="70">
+                {% else %}
+                    No Image
+                {% endif %}
+            </td>
+
+            <td>
+                {{ i.Latitude }}, {{ i.Longitude }} <br>
+                <a href="https://www.google.com/maps?q={{ i.Latitude }},{{ i.Longitude }}" target="_blank">
+                    Open
+                </a>
+            </td>
+
+            <td>👍 {{ i.like_count }}</td>
+
+            <td>
+                <form method="post" action="{% url 'request_ending_date' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="complaint_id" value="{{ i.id }}">
+                    <input type="date" name="date" required>
+                    <button type="submit">Set Deadline</button>
+                </form>
+            </td>
+        </tr>
+    {% empty %}
+        <tr>
+            <td colspan="9">No assigned complaints 🎉</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+</body>
+</html>
