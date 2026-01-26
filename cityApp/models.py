@@ -69,7 +69,7 @@ class AssignWork(models.Model):
     Status = models.CharField(max_length=30, default="pending")  
 
 class Notification(models.Model):
-    ComplaintsId=models.ForeignKey(ComplaintsTable,on_delete=models.CASCADE,null=True,blank=True)
+    TimeLineId=models.ForeignKey(TimeLineTable,on_delete=models.CASCADE,null=True,blank=True)
     Date = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, null=True, blank=True)
     is_read = models.BooleanField(default=False)

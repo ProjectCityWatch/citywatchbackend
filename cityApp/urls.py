@@ -21,7 +21,7 @@ urlpatterns = [
     
 
     path('submit-work/<int:id>/', SubmitWorkView.as_view(), name='submit_work'),
-    path('feedbackview/', ViewFeedback.as_view(), name='ViewFeedback'),
+    
     path('viewcomplaints/', ViewComplaints.as_view(), name='viewcomplaints'),
     path('mark-fake/<int:c_id>/', MarkFakeComplaint.as_view(), name='mark_fake'),
     path('admin-dashboard/', AdminDashboardView.as_view(), name='admin-dashboard'),
@@ -36,7 +36,7 @@ urlpatterns = [
     path('authorityhome/', AuthorityHomeView.as_view(), name='authorityhome'),
     path('update/', UpdateView.as_view(), name='update'),
     path('updatestatus/<int:cid>/', UpdateStatusView.as_view(), name='update_status'),
-    path('viewfeedback/', ViewFeedbackView.as_view(), name='viewfeedback'),
+   
     path('viewcomplaintsview/', ViewComplaintsView.as_view(), name='viewcomplaintsview'),
     path('authorityprofile/', AuthorityProfileView.as_view(), name='authorityprofile'),
     path('submit-work/<int:complaint_id>/', SubmitWorkView.as_view(), name='submit_work'),
@@ -73,6 +73,11 @@ path(
     'authority/mark-fake/<int:c_id>/',
     AuthorityMarkFakeComplaint.as_view(),
     name='authority_mark_fake'
+),
+path(
+    "update-department/<int:complaint_id>/",
+    UpdateDepartmentView.as_view(),
+    name="update_department"
 ),
 
 

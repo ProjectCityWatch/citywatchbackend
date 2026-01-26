@@ -104,6 +104,28 @@ def mark_complaint_fake(complaint):
 
 
 
+# # --- Login ---
+# class LoginView(View):
+#     def get(self, request):
+#         return render(request, 'Login.html')
+
+#     def post(self, request):
+#         username = request.POST['username']
+#         password = request.POST['password']
+
+#         try:
+#             user = LoginTable.objects.get(Username=username, Password=password)
+#             request.session['loginid'] = user.id
+
+#             if user.UserType == 'admin':
+#                 return redirect('adminhome')
+#             elif user.UserType == 'Authority':
+#                 return redirect('authorityhome')
+#             else:
+#                 return render(request, 'Login.html', {'error': 'Invalid user type'})
+#         except LoginTable.DoesNotExist:
+#             return render(request, 'Login.html', {'error': 'Invalid username or password'})
+
 # --- Login ---
 class LoginView(View):
     def get(self, request):
@@ -117,14 +139,21 @@ class LoginView(View):
             user = LoginTable.objects.get(Username=username, Password=password)
             request.session['loginid'] = user.id
 
+            # ✅ ADDITION: blocked users can login
+            if user.UserType == 'Blocked':
+                return redirect('userhome')
+
             if user.UserType == 'admin':
                 return redirect('adminhome')
             elif user.UserType == 'Authority':
                 return redirect('authorityhome')
+            elif user.UserType == 'USER':
+                return redirect('userhome')
             else:
                 return render(request, 'Login.html', {'error': 'Invalid user type'})
         except LoginTable.DoesNotExist:
             return render(request, 'Login.html', {'error': 'Invalid username or password'})
+
 
 # -------------------------------------------------- Administration ---------------------------------
 from django.shortcuts import get_object_or_404, redirect
@@ -159,6 +188,42 @@ class MarkFakeComplaint(View):
 
         return redirect('assign_works')
 
+from django.views import View
+from django.shortcuts import get_object_or_404, redirect
+from django.http import HttpResponse
+from cityApp.models import ComplaintsTable, DepartmentsTable, TimeLineTable
+
+class UpdateDepartmentView(View):
+    def post(self, request, complaint_id):
+        department_name = request.POST.get("department")
+
+        # safety check
+        if not department_name:
+            return HttpResponse(
+                "<script>alert('Department not selected');history.back();</script>"
+            )
+
+        # get complaint
+        complaint = get_object_or_404(ComplaintsTable, id=complaint_id)
+
+        # get department object
+        department = get_object_or_404(
+            DepartmentsTable,
+            DepartmentName__iexact=department_name
+        )
+
+        # update complaint
+        complaint.DepartmentId = department
+        complaint.save(update_fields=["DepartmentId"])
+
+        # timeline entry (IMPORTANT for tracking)
+        TimeLineTable.objects.create(
+            ComplaintId=complaint,
+            Status="Department Changed",
+            Remark=f"Department updated to {department.DepartmentName}"
+        )
+
+        return redirect("assign_decision")
 
 
 
@@ -434,14 +499,44 @@ class UnblockUser(View):
 
 
 
+# class SubmitWorkView(View):
+#     def post(self, request, id):
+#         complaint = ComplaintsTable.objects.get(id=id)
+
+#         # get requested date from complaint
+#         requested_date = complaint.EndingDate
+
+#         # create or update AssignWork
+#         assign, created = AssignWork.objects.get_or_create(
+#             ComplaintId=complaint
+#         )
+#         assign.EndingDate = requested_date
+#         assign.Status = "Assigned"
+#         assign.save()
+
+#         # update complaint status
+#         complaint.Status = "Assigned"
+#         complaint.save()
+
+#         # timeline entry
+#         TimeLineTable.objects.create(
+#             ComplaintId=complaint,
+#             Status="Assigned",
+#             Remark=f"Deadline confirmed as {requested_date}"
+#         )
+
+#         return HttpResponse(
+#             "<script>alert('Work Assigned Successfully');"
+#             "window.location='/assign-works/';</script>"
+#         )
+
+
 class SubmitWorkView(View):
     def post(self, request, id):
         complaint = ComplaintsTable.objects.get(id=id)
 
-        # get requested date from complaint
         requested_date = complaint.EndingDate
 
-        # create or update AssignWork
         assign, created = AssignWork.objects.get_or_create(
             ComplaintId=complaint
         )
@@ -453,11 +548,17 @@ class SubmitWorkView(View):
         complaint.Status = "Assigned"
         complaint.save()
 
-        # timeline entry
-        TimeLineTable.objects.create(
+        # ✅ create timeline entry FIRST
+        timeline = TimeLineTable.objects.create(
             ComplaintId=complaint,
             Status="Assigned",
             Remark=f"Deadline confirmed as {requested_date}"
+        )
+
+        # ✅ now create notification correctly
+        Notification.objects.create(
+            TimeLineId=timeline,
+            status="Assigned"
         )
 
         return HttpResponse(
@@ -465,29 +566,6 @@ class SubmitWorkView(View):
             "window.location='/assign-works/';</script>"
         )
 
-# class SubmitWorkView(View):
-#     def post(self, request, id):
-#         assigned_date = request.POST.get('deadline')
-
-#         complaint = ComplaintsTable.objects.get(id=id)
-
-#         # prevent duplicate assignment
-#         if AssignWork.objects.filter(ComplaintId=complaint).exists():
-#             return HttpResponse(
-#                 "<script>alert('This complaint is already assigned');window.location='/assign-works/';</script>"
-#             )
-
-#         AssignWork.objects.create(
-#             ComplaintId=complaint,
-#             AssignedDate=assigned_date
-#         )
-
-#         return HttpResponse(
-#             "<script>alert('Work Assigned Successfully');window.location='/assign-works/';</script>"
-#         )
-
-#         )
-        
 
 class UpdateStatus(View):
     def post(self, request, c_id):
@@ -600,9 +678,15 @@ class UpdateStatus(View):
         # ---------------------------------------
         # 4️⃣ Timeline
         # ---------------------------------------
-        TimeLineTable.objects.create(
+        timeline_obj=TimeLineTable.objects.create(
             ComplaintId=complaint,
             Status=status
+        )
+
+         # ✅ now create notification correctly
+        Notification.objects.create(
+            TimeLineId=timeline_obj,
+            status=status
         )
 
 
@@ -619,20 +703,9 @@ class ViewComplaints(View):
         print(obj)
         return render(request, 'Administration/viewcomplaints.html', {'val':obj})
 
-class ViewFeedback(View):
-    def get(self, request):
-        feedbacks = FeedbackTable.objects.all()
-        return render(request, 'Administration/feedbackview.html', {'feedbacks': feedbacks})
 
-    def post(self, request):
-        feedback_id = request.POST.get('feedback_id')
-        reply_text = request.POST.get('reply')
 
-        feedback = FeedbackTable.objects.get(id=feedback_id)
-        feedback.Replay = reply_text
-        feedback.save()
-
-        return redirect('ViewFeedback')
+  
     
 
 
@@ -695,10 +768,7 @@ class UpdateStatusView(View):
        
         return HttpResponse('''<script>alert('Status changed successfully');window.location='/viewcomplaintsview';</script>''')
 
-class ViewFeedbackView(View):
-    def get(self, request):
-        feedback = FeedbackTable.objects.all()
-        return render(request, 'Authority/viewfeedbacktable.html', {'feedback': feedback})
+
 
 class ReplayView(View):
     def post(self, request, id):
@@ -844,6 +914,12 @@ class request_ending_date(View):
         time_line_obj.ComplaintId = ComplaintsTable.objects.get(id=complaint.id)
         time_line_obj.Status = "Date Fixed"
         time_line_obj.save()
+        Notification.objects.create(
+            TimeLineId=time_line_obj,
+            status="Date Fixed"
+        )
+
+
 
         # assign = AssignWork.objects.get(ComplaintId__id = complaint_id)
         # assign.EndingDate = ending_date
@@ -959,6 +1035,18 @@ class AuthorityMarkFakeComplaint(View):
 
 
 #############################################  API ###########################################
+CATEGORY_DEPARTMENT_MAP = {
+    "Road damage": "Roads And Public Works",
+    "Damaged public property": "Roads And Public Works",
+
+    "Water leakage": "Water Authority",
+    "Drainage": "Drainage Department",
+
+    "Waste dumping": "Waste Management",
+
+    "Street Light failure": "Electrical Department",
+}
+
 
 # class UserRegistration(APIView):
 #     def post(self, request):
@@ -1270,22 +1358,44 @@ class LoginAPI(APIView):
 
 
 
+# class ViewTimelineAPI(APIView):
+#     def get(self, request, id):
+#         print("------------------------>", id)
+#         comp = ComplaintsTable.objects.get(id=id) 
+#         print("++++++++++++++++",comp)
+#         TimeLine=TimeLineTable.objects.filter(ComplaintId_id=comp)
+#         print(TimeLine)
+#         serializer=TimeLineSerializer(TimeLine, many=True)
+#         print("------------------>", serializer.data)
+#         if serializer.data:
+         
+#             return Response(serializer.data, status=status.HTTP_200_OK)
+#         else:
+#             return Response(serializer.data, status=status.HTTP_204_NO_CONTENT)
+            
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+
 class ViewTimelineAPI(APIView):
     def get(self, request, id):
-        print("------------------------>", id)
-        comp = ComplaintsTable.objects.get(id=id) 
-        print("++++++++++++++++",comp)
-        TimeLine=TimeLineTable.objects.filter(ComplaintId_id=comp)
-        print(TimeLine)
-        serializer=TimeLineSerializer(TimeLine, many=True)
-        print("------------------>", serializer.data)
-        if serializer.data:
-         
-            return Response(serializer.data, status=status.HTTP_200_OK)
+        comp = ComplaintsTable.objects.get(id=id)
+
+        timeline = TimeLineTable.objects.filter(ComplaintId_id=comp)
+        serializer = TimeLineSerializer(timeline, many=True)
+
+        data = serializer.data
+
+        # ✅ ADD DEADLINE ONLY FOR THESE STATUSES
+        if comp.Status in ["Date Fixed", "Extended"]:
+            for item in data:
+                item["deadline"] = comp.EndingDate
+        print(data)
+        if data:
+            return Response(data, status=status.HTTP_200_OK)
         else:
-            return Response(serializer.data, status=status.HTTP_204_NO_CONTENT)
-            
-    
+            return Response(data, status=status.HTTP_204_NO_CONTENT)
+
 class SendAck(APIView):
     def post(self,request,id):
         print(request.data)
@@ -1462,23 +1572,23 @@ class AdminDashboardView(View):
 
 class NotificationListAPI(APIView):
     def get(self, request, lid):
-        try:
+        # try:
             # Filter notifications for the specific user (lid)
             notifications = Notification.objects.filter(
-                ComplaintsId__UserId__LoginId__id=lid
+                TimeLineId__ComplaintId__UserId__LoginId__id=lid
             ).order_by('-Date')
             
             serializer = NotificationSerializer(notifications, many=True)
-            print('------------->', serializer.data)
+            print('---------datadddd--->', serializer.data)
             return Response(
                 {"status": "success", "data": serializer.data},
                 status=status.HTTP_200_OK
             )
-        except Exception as e:
-            return Response(
-                {"status": "error", "message": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        # except Exception as e:
+        #     return Response(
+        #         {"status": "error", "message": str(e)},
+        #         status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        #     )
 
 class MarkNotificationReadAPI(APIView):
     def post(self, request, nid):
@@ -1558,51 +1668,49 @@ def detect_category_from_labels(labels):
 # SEND COMPLAINT API
 # =====================================================
 
-class SendComplaintAPI(APIView):
+# class SendComplaintAPI(APIView):
 
-    def post(self, request, id):
+#     def post(self, request, id):
 
-        print("📥 Incoming complaint:", request.data)
+#         print("📥 Incoming complaint:", request.data)
 
-        user = get_object_or_404(UserTable, LoginId_id=id)
-        serializer = AddComplaintsSerializer(data=request.data)
+#         user = get_object_or_404(UserTable, LoginId_id=id)
+#         serializer = AddComplaintsSerializer(data=request.data)
 
-        if serializer.is_valid():
-            complaint = serializer.save(UserId=user)
+#         if serializer.is_valid():
+#             complaint = serializer.save(UserId=user)
 
-            # =====================================
-            # AUTO CATEGORY FROM IMAGE (IMAGGA)
-            # =====================================
-            if complaint.Image:
-                try:
-                    labels = get_image_labels(complaint.Image.path)
-                    category = detect_category_from_labels(labels)
+#             # =====================================
+#             # AUTO CATEGORY FROM IMAGE (IMAGGA)
+#             # =====================================
+#             if complaint.Image:
+#                 try:
+#                     labels = get_image_labels(complaint.Image.path)
+#                     category = detect_category_from_labels(labels)
 
-                    print("✅ Imagga labels:", labels)
-                    print("✅ Detected category:", category)
+#                     print("✅ Imagga labels:", labels)
+#                     print("✅ Detected category:", category)
 
-                    complaint.Category = category
-                    complaint.save(update_fields=["Category"])
+#                     complaint.Category = category
+#                     complaint.save(update_fields=["Category"])
 
-                except Exception as e:
-                    print("❌ Imagga error:", e)
+#                 except Exception as e:
+#                     print("❌ Imagga error:", e)
 
-            return Response(
-                {
-                    "message": "Complaint submitted successfully",
-                    "category": complaint.Category
-                },
-                status=status.HTTP_201_CREATED
-            )
+#             return Response(
+#                 {
+#                     "message": "Complaint submitted successfully",
+#                     "category": complaint.Category
+#                 },
+#                 status=status.HTTP_201_CREATED
+#             )
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 
 # //////////////////////////////////////////////////////////////////////////////
-
 class SendComplaintCAPI(APIView):
-
 
     # -------------------------------------------------
     # POST → Submit complaint
@@ -1622,8 +1730,11 @@ class SendComplaintCAPI(APIView):
         # 🚫 BLOCKED USER CHECK
         if user.LoginId.UserType == 'Blocked':
             return Response(
-                {'error': 'You are blocked and cannot submit complaints'},
-                status=status.HTTP_403_FORBIDDEN
+                {
+            "status": "blocked",
+            "message": "You are blocked by admin. You cannot submit complaints."
+        },
+                status=status.HTTP_200_OK
             )
 
         serializer = AddComplaintsSerializer(data=request.data)
@@ -1649,49 +1760,28 @@ class SendComplaintCAPI(APIView):
             )
 
             # =====================================
-            # 🧠 AUTO CATEGORY FROM IMAGE (IMAGGA)
+            # 🧠 CATEGORY → DEPARTMENT MAPPING
             # =====================================
-            if complaint.Image:
-                try:
-                    # labels = get_image_labels(complaint.Image.path)
-                    # category = detect_category_from_labels(labels)
+            try:
+                cat = request.data.get("Category")
 
-                    # print("✅ Imagga labels:", labels)
-                    # print("✅ Detected category:", category)
+                dept_name = CATEGORY_DEPARTMENT_MAP.get(cat)
 
-                    dept_obj = None
-                    cat = request.POST['Category']
-                    if cat == "Road Damage":
-                        dept_obj = DepartmentsTable.objects.get(DepartmentName='Roads And Public Works')
-                        
-                    elif cat == "Water Leakage":
-                        dept_obj = DepartmentsTable.objects.get(DepartmentName='Water Authority')
-                        
-                    elif cat == "Waste Dumping":
-                        dept_obj = DepartmentsTable.objects.get(DepartmentName='Waste Management')
-                        
-                    elif cat == "Street Light":
-                        dept_obj = DepartmentsTable.objects.get(DepartmentName='Electrical Department')
-                        
+                if dept_name:
+                    dept_obj = DepartmentsTable.objects.filter(
+                        DepartmentName__iexact=dept_name
+                    ).first()
 
-                    # for key, keywords in category_map.items():
-                    #     if category == key:
-                    #         for word in keywords:
-                    #             dept_obj = DepartmentsTable.objects.filter(
-                    #                 DepartmentName__icontains=word
-                    #             ).first()
-                    #             if dept_obj:
-                    #                 break                    
-                    
-                    print("---------------->", dept_obj)
                     if dept_obj:
                         complaint.DepartmentId = dept_obj
-                        complaint.save()
+                        complaint.save(update_fields=["DepartmentId"])
                     else:
-                        print("⚠️ No matching department found for:", category)                    
+                        print("⚠️ Department not found:", dept_name)
+                else:
+                    print("⚠️ No mapping for category:", cat)
 
-                except Exception as e:
-                    print("❌ Imagga error:", e)
+            except Exception as e:
+                print("❌ Department mapping error:", e)
 
             # -----------------------------
             # Points logic
@@ -1731,6 +1821,7 @@ class SendComplaintCAPI(APIView):
                 Status='Pending'
             )
 
+
             return Response(
                 {
                     "message": "Complaint submitted successfully",
@@ -1752,6 +1843,159 @@ class SendComplaintCAPI(APIView):
         serializer = ComplaintsSerializer(complaints, many=True)
 
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# class SendComplaintCAPI(APIView):
+
+
+#     # -------------------------------------------------
+#     # POST → Submit complaint
+#     # -------------------------------------------------
+#     def post(self, request, id):
+#         category_map = {
+#             "Water Leakage": ["water"],
+#             "Road Damage": ["road", "pothole"],
+#             "Waste Dumping": ["waste", "garbage"],
+#             "Street Light Issue": ["street", "light", "electrical"],
+#         }
+
+#         print("📥 Incoming complaint:", request.data)
+
+#         user = get_object_or_404(UserTable, LoginId_id=id)
+
+#         # 🚫 BLOCKED USER CHECK
+#         if user.LoginId.UserType == 'Blocked':
+#             return Response(
+#                 {'error': 'You are blocked and cannot submit complaints'},
+#                 status=status.HTTP_403_FORBIDDEN
+#             )
+
+#         serializer = AddComplaintsSerializer(data=request.data)
+
+#         # -----------------------------
+#         # Anonymous logic
+#         # -----------------------------
+#         anonymous = request.data.get('is_anonymous', False)
+#         if isinstance(anonymous, str):
+#             anonymous = anonymous.lower() == 'true'
+
+#         # -----------------------------
+#         # First complaint check
+#         # -----------------------------
+#         is_first_complaint = not ComplaintsTable.objects.filter(
+#             UserId__LoginId_id=id
+#         ).exists()
+
+#         if serializer.is_valid():
+#             complaint = serializer.save(
+#                 UserId=user,
+#                 is_anonymous=anonymous
+#             )
+
+#             # =====================================
+#             # 🧠 AUTO CATEGORY FROM IMAGE (IMAGGA)
+#             # =====================================
+#             if complaint.Image:
+#                 try:
+#                     # labels = get_image_labels(complaint.Image.path)
+#                     # category = detect_category_from_labels(labels)
+
+#                     # print("✅ Imagga labels:", labels)
+#                     # print("✅ Detected category:", category)
+
+#                     dept_obj = None
+#                     cat = request.POST['Category']
+#                     if cat == "Road Damage":
+#                         dept_obj = DepartmentsTable.objects.get(DepartmentName='Roads And Public Works')
+                        
+#                     elif cat == "Water Leakage":
+#                         dept_obj = DepartmentsTable.objects.get(DepartmentName='Water Authority')
+                        
+#                     elif cat == "Waste Dumping":
+#                         dept_obj = DepartmentsTable.objects.get(DepartmentName='Waste Management')
+                        
+#                     elif cat == "Street Light":
+#                         dept_obj = DepartmentsTable.objects.get(DepartmentName='Electrical Department')
+                        
+
+#                     # for key, keywords in category_map.items():
+#                     #     if category == key:
+#                     #         for word in keywords:
+#                     #             dept_obj = DepartmentsTable.objects.filter(
+#                     #                 DepartmentName__icontains=word
+#                     #             ).first()
+#                     #             if dept_obj:
+#                     #                 break                    
+                    
+#                     print("---------------->", dept_obj)
+#                     if dept_obj:
+#                         complaint.DepartmentId = dept_obj
+#                         complaint.save()
+#                     else:
+#                         print("⚠️ No matching department found for:", category)                    
+
+#                 except Exception as e:
+#                     print("❌ Imagga error:", e)
+
+#             # -----------------------------
+#             # Points logic
+#             # -----------------------------
+#             points = 200 if is_first_complaint else 50
+#             PointsTable.objects.create(
+#                 ComplaintId=complaint,
+#                 Points=points
+#             )
+
+#             # -----------------------------
+#             # 🔥 TOTAL POINTS RECALCULATION
+#             # -----------------------------
+#             from django.db.models import Sum
+
+#             total = PointsTable.objects.filter(
+#                 ComplaintId__UserId=user
+#             ).aggregate(total=Sum('Points'))['total']
+
+#             user.total_points = total if total is not None else 0
+#             user.save(update_fields=['total_points'])
+
+#             # -----------------------------
+#             # Badge only for first complaint
+#             # -----------------------------
+#             if is_first_complaint:
+#                 BadgeTable.objects.create(
+#                     ComplaintId=complaint,
+#                     Badge='First Report'
+#                 )
+
+#             # -----------------------------
+#             # Timeline entry
+#             # -----------------------------
+#             TimeLineTable.objects.create(
+#                 ComplaintId=complaint,
+#                 Status='Pending'
+#             )
+
+#             return Response(
+#                 {
+#                     "message": "Complaint submitted successfully",
+#                     "category": complaint.Category,
+#                     "points_awarded": points
+#                 },
+#                 status=status.HTTP_201_CREATED
+#             )
+
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#     # -------------------------------------------------
+#     # GET → View complaints
+#     # -------------------------------------------------
+#     def get(self, request, id):
+#         user = get_object_or_404(UserTable, LoginId_id=id)
+
+#         complaints = ComplaintsTable.objects.filter(UserId=user)
+#         serializer = ComplaintsSerializer(complaints, many=True)
+
+#         return Response(serializer.data, status=status.HTTP_200_OK)
 
 # class ViewProfileAPI(APIView):
 #     def get(self, request,id):
@@ -1851,11 +2095,14 @@ class UserPointsAPI(APIView):
         ).order_by("-CreatedDate")[:10]
 
         def activity_title(p):
-            if p.Points >= 200:
-                return "Badge Earned"
-            if p.Points == 100:
-                return "Complaint Resolved"
-            return "Complaint Reported"
+         if p.Points >= 200:
+          return "Badge Earned"
+         elif p.Points == 100:
+            return "Complaint Resolved"
+         elif p.Points == -100:
+            return "Complaint Marked as Fake"
+         else:
+             return "Complaint Reported"
 
         activities = [
             {
@@ -2139,12 +2386,17 @@ class AuthorityExtendDeadlineView(View):
         complaint.save(update_fields=["EndingDate", "Status"])
 
         # timeline
-        TimeLineTable.objects.create(
+        obj = TimeLineTable.objects.create(
             ComplaintId=complaint,
             Status="Extended",
             EndingDate=new_date,
             Remark=reason
         )
+        Notification.objects.create(
+            TimeLineId=obj,
+            status="Extended"
+        )
+
 
         return redirect("/authority/date-fixed-complaints/")
     
@@ -2284,9 +2536,53 @@ from .models import (
     TimeLineTable
 )
 
+# class AssignDecisionPage(View):
+#     def get(self, request):
+
+#         assign_date = AssignWork.objects.filter(
+#             ComplaintId=OuterRef('pk')
+#         ).values('EndingDate')[:1]
+
+#         complaints = ComplaintsTable.objects.annotate(
+#             final_deadline=Subquery(assign_date),
+#             deadline_changed=Exists(
+#                 TimeLineTable.objects.filter(
+#                     ComplaintId=OuterRef('pk'),
+#                     Status="Requested"
+#                 )
+#             )
+#         )
+
+#         assigned_ids = AssignWork.objects.values_list(
+#             'ComplaintId_id', flat=True
+#         )
+
+#         # 🎯 ONLY complaints waiting for decision
+#         complaints = complaints.filter(
+#             Status="pending"
+#         ).exclude(
+#             id__in=assigned_ids
+#         )
+
+#         department_id = request.GET.get("department")
+#         if department_id and department_id != "all":
+#             complaints = complaints.filter(
+#                 DepartmentId_id=department_id
+#             )
+
+#         return render(
+#             request,
+#             "Administration/assign_decision.html",
+#             {
+#                 "val": complaints,
+#                 "departments": DepartmentsTable.objects.all(),
+#                 "selected_department": department_id,
+#             }
+#         )
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
 class AssignDecisionPage(View):
     def get(self, request):
-
         assign_date = AssignWork.objects.filter(
             ComplaintId=OuterRef('pk')
         ).values('EndingDate')[:1]
@@ -2312,10 +2608,19 @@ class AssignDecisionPage(View):
             id__in=assigned_ids
         )
 
+        # --- FILTERS ---
         department_id = request.GET.get("department")
+        priority_val = request.GET.get("priority") # 1. Capture priority
+
         if department_id and department_id != "all":
             complaints = complaints.filter(
                 DepartmentId_id=department_id
+            )
+            
+        # 2. Apply Priority filter logic
+        if priority_val and priority_val != "all":
+            complaints = complaints.filter(
+                Priority=priority_val
             )
 
         return render(
@@ -2325,9 +2630,10 @@ class AssignDecisionPage(View):
                 "val": complaints,
                 "departments": DepartmentsTable.objects.all(),
                 "selected_department": department_id,
+                "selected_priority": priority_val, # 3. Pass back to template
             }
         )
-
+    
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.views import APIView
 from rest_framework.response import Response

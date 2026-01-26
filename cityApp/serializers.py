@@ -197,19 +197,19 @@ class TimeLineSerializer(serializers.ModelSerializer):
 
 class NotificationSerializer(serializers.ModelSerializer):
     comp_id = serializers.IntegerField(
-        source='ComplaintsId.id',
+        source='TimeLineId.ComplaintId.id',
         read_only=True
     )
     Description = serializers.CharField(
-        source='ComplaintsId.Description',
+        source='TimeLineId.ComplaintId.Description',
         read_only=True
     )
     Category = serializers.CharField(
-        source='ComplaintsId.Category',
+        source='TimeLineId.ComplaintId.Category',
         read_only=True
     )
     complaint_status = serializers.CharField(
-        source='ComplaintsId.Status',
+        source='TimeLineId.ComplaintId.Status',
         read_only=True
     )
 
@@ -223,6 +223,7 @@ class NotificationSerializer(serializers.ModelSerializer):
             'Date',
             'complaint_status',
             'is_read',
+            'status',
         ]
 
 # serializers.py

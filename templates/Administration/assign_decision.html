@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -164,7 +164,7 @@
 
 <h2>Complaint Review (Assign / Fake)</h2>
 
-<!-- ================= FILTER ================= -->
+
 <form method="get">
     <label>Department</label>
     <select name="department">
@@ -180,7 +180,7 @@
     <button type="submit">Filter</button>
 </form>
 
-<!-- ================= TABLE ================= -->
+
 <div class="table-wrapper">
 <table>
     <thead>
@@ -260,7 +260,7 @@
 </table>
 </div>
 
-<!-- ================= CONFIRM FAKE MODAL ================= -->
+
 <div id="confirmFakeModal">
     <div class="modal-box">
         <h3>Confirm Action</h3>
@@ -298,6 +298,381 @@
             currentFakeForm.submit();
         }
     };
+</script>
+
+</body>
+</html> -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+    <title>Assign Decision</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Inter", "Segoe UI", Arial, sans-serif;
+        }
+
+        body {
+            background: #020617;
+            color: #e5e7eb;
+            padding: 30px;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 24px;
+            font-size: 26px;
+            font-weight: 600;
+        }
+
+        form[method="get"] {
+            background: #0b1220;
+            padding: 18px;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        label { font-weight: 500; color: #cbd5f5; }
+
+        select {
+            padding: 9px 12px;
+            border-radius: 8px;
+            background: #020617;
+            border: 1px solid #334155;
+            color: #e5e7eb;
+        }
+
+        button {
+            padding: 9px 18px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 8px;
+            background: #2563eb;
+            border: none;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover { background: #1d4ed8; }
+
+        /* 🔹 NEW BUTTON */
+        .btn-edit {
+            background: #475569;
+            margin-top: 6px;
+            font-size: 13px;
+        }
+        .btn-edit:hover { background: #64748b; }
+
+        .table-wrapper {
+            border: 1px solid #1e293b;
+            border-radius: 14px;
+            overflow-x: auto;
+            background: #020617;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1500px;
+        }
+
+        th, td {
+            padding: 14px;
+            border-right: 1px solid #1e293b;
+            text-align: center;
+            vertical-align: top;
+        }
+
+        th { color: #93c5fd; }
+
+        tbody tr:nth-child(even) { background: #0b1220; }
+        tbody tr:hover { background: #0f172a; }
+
+        td:nth-child(4) { text-align: left; }
+
+        img, iframe {
+            border-radius: 8px;
+            border: 1px solid #334155;
+        }
+
+        a { color: #60a5fa; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        td:last-child form { margin-bottom: 8px; }
+        td:last-child button { width: 100%; }
+
+        /* MODAL */
+        #confirmFakeModal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(2,6,23,0.85);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #confirmFakeModal .modal-box {
+            background: #0b1220;
+            border: 1px solid #1e293b;
+            border-radius: 14px;
+            padding: 24px;
+            width: 360px;
+            text-align: center;
+        }
+        #imageModal {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    justify-content: center;
+    align-items: center;
+    overflow: hidden; /* Prevents page scroll when zoomed */
+}
+
+#fullImage {
+    max-width: 90%;
+    max-height: 90%;
+    border-radius: 4px;
+    transition: transform 0.25s ease; /* Smooth zoom transition */
+    cursor: grab;
+}
+
+#fullImage:active {
+    cursor: grabbing;
+}
+    </style>
+</head>
+
+<body>
+<div id="imageModal" onclick="this.style.display='none'">
+    <span style="position:absolute; top:20px; right:35px; color:white; font-size:40px; font-weight:bold; cursor:pointer;">&times;</span>
+    <img id="fullImage" src="" alt="Full View">
+</div>
+<h2>Complaint Review (Assign / Fake)</h2>
+
+<!-- FILTER -->
+<form method="get">
+    <label>Department</label>
+    <select name="department">
+        <option value="all">All</option>
+        {% for d in departments %}
+            <option value="{{ d.id }}"
+                {% if selected_department == d.id|stringformat:"s" %}selected{% endif %}>
+                {{ d.DepartmentName }}
+            </option>
+        {% endfor %}
+    </select>
+
+    <label style="margin-left: 10px;">Priority</label>
+    <select name="priority">
+        <option value="all">All</option>
+        <option value="High" {% if selected_priority == "High" %}selected{% endif %}>High</option>
+        <option value="Medium" {% if selected_priority == "Medium" %}selected{% endif %}>Medium</option>
+        <option value="Low" {% if selected_priority == "Low" %}selected{% endif %}>Low</option>
+    </select>
+
+    <button type="submit">Filter</button>
+</form>
+
+<!-- TABLE -->
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+    <th>User</th>
+    <th>Department</th>
+    <th>Category</th>
+    <th>Description</th>
+    <th>Priority</th>
+    <th>Image</th>
+    <th>Location</th>
+    <th>Map</th>
+    <th>Submitted</th>
+    <th>Action</th>
+</tr>
+</thead>
+
+<tbody>
+{% for i in val %}
+<tr>
+    <td>{{ i.UserId.Name }}</td>
+
+    <!-- ✅ EDIT DEPARTMENT FEATURE (ADDED HERE) -->
+    <td>
+    <div style="font-weight:600; margin-bottom: 5px;">
+        {{ i.DepartmentId.DepartmentName }}
+    </div>
+
+    <button type="button" class="btn-edit" onclick="toggleDept('{{ i.id }}')">
+        Edit Department
+    </button>
+
+    <div id="dept-box-{{ i.id }}" style="display:none; margin-top:8px;">
+        <form method="post" action="{% url 'update_department' i.id %}">
+            {% csrf_token %}
+            <select name="department" required style="width: 100%; margin-bottom: 5px;">
+                <option value="">Select Department</option>
+                {% for d in departments %}
+                    <option value="{{ d.DepartmentName }}">{{ d.DepartmentName }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" style="background: #10b981; width: 100%; padding: 5px; font-size: 12px;">
+                Save Change
+            </button>
+        </form>
+    </div>
+</td>
+
+    <td>{{ i.Category }}</td>
+    <td>{{ i.Description }}</td>
+    <td>{{ i.Priority }}</td>
+
+    <td>
+    {% if i.Image %}
+        <img src="{{ i.Image.url }}" 
+             width="110" height="90" 
+             style="cursor: pointer; transition: transform 0.2s;" 
+             onclick="openFullImage('{{ i.Image.url }}')"
+             alt="Complaint Image">
+    {% else %} 
+        No Image 
+    {% endif %}
+</td>
+
+    <td>
+        {{ i.Latitude }}, {{ i.Longitude }} <br>
+        <a href="https://www.google.com/maps?q={{ i.Latitude }},{{ i.Longitude }}" target="_blank">
+            Open
+        </a>
+    </td>
+
+    <td>
+        <iframe width="250" height="170"
+            src="https://www.google.com/maps?q={{ i.Latitude }},{{ i.Longitude }}&output=embed"
+            loading="lazy">
+        </iframe>
+    </td>
+
+    <td>{{ i.SubmitDate|date:"d M Y, h:i A" }}</td>
+
+    <td>
+        <form method="post" action="{% url 'submit_work' i.id %}">
+            {% csrf_token %}
+            <button type="submit">Assign Work</button>
+        </form>
+
+        <form method="post" action="{% url 'mark_fake' i.id %}" class="fake-form">
+            {% csrf_token %}
+            <button type="button"
+                    style="background:#7f1d1d;"
+                    onclick="openFakeModal(this)">
+                Mark Fake
+            </button>
+        </form>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="10" style="padding:20px; text-align:center;">
+        No pending complaints 🎉
+    </td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+
+<!-- MODAL -->
+<div id="confirmFakeModal">
+    <div class="modal-box">
+        <h3>Confirm Action</h3>
+        <p>Are you sure you want to mark this complaint as
+            <b style="color:#fb7185;">Fake</b>?</p>
+        <div style="display:flex; gap:12px;">
+            <button style="flex:1; background:#334155;"
+                    onclick="closeFakeModal()">Cancel</button>
+            <button id="confirmFakeBtn"
+                    style="flex:1; background:#7f1d1d;">
+                Yes, Mark Fake
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentFakeForm = null;
+
+    function openFakeModal(btn) {
+        currentFakeForm = btn.closest("form");
+        document.getElementById("confirmFakeModal").style.display = "flex";
+    }
+
+    function closeFakeModal() {
+        currentFakeForm = null;
+        document.getElementById("confirmFakeModal").style.display = "none";
+    }
+
+    document.getElementById("confirmFakeBtn").onclick = function () {
+        if (currentFakeForm) {
+            currentFakeForm.submit();
+        }
+    };
+
+    /* ✅ EDIT DEPARTMENT TOGGLE */
+    function toggleDept(id) {
+        const box = document.getElementById("dept-box-" + id);
+        box.style.display = box.style.display === "block" ? "none" : "block";
+    }
+    let zoomLevel = 1;
+
+function openFullImage(src) {
+    const modal = document.getElementById("imageModal");
+    const img = document.getElementById("fullImage");
+    
+    img.src = src;
+    zoomLevel = 1; // Reset zoom level
+    img.style.transform = `scale(${zoomLevel})`;
+    modal.style.display = "flex";
+}
+
+// Zoom functionality using the mouse wheel
+document.getElementById("imageModal").addEventListener("wheel", function(e) {
+    e.preventDefault();
+    const img = document.getElementById("fullImage");
+    
+    if (e.deltaY < 0) {
+        zoomLevel += 0.1; // Zoom in
+    } else {
+        zoomLevel = Math.max(1, zoomLevel - 0.1); // Zoom out (min 1x)
+    }
+    
+    img.style.transform = `scale(${zoomLevel})`;
+}, { passive: false });
+window.addEventListener('pageshow', function(event) {
+    // if event.persisted is true, the page was loaded from the cache
+    if (event.persisted) {
+        window.location.reload();
+    }
+});
 </script>
 
 </body>
